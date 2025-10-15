@@ -2,6 +2,7 @@ import serial
 import serial.tools.list_ports
 import time
 import sys
+from Logger import Logger
 
 # pip install pyserial
 
@@ -51,6 +52,12 @@ def PolacznieZArduino(arduino):
     if ponawianieObecne >= PONAWIANIE_LIMIT:
         print("Nie udalo sie nawiazac polaczenia z Arduino. Koncze dzialanie")
         sys.exit(1)
+
+#-------------------------logowanie----------------------
+log_filename = "log_PythonAplhaBotKomunikacja.txt"
+sys.stdout = Logger(log_filename)
+sys.stderr = sys.stdout
+print(f"Logowanie rozpoczete do pliku: {log_filename}")
 
 # ------------------------- stałe ----------------------
 PORT = WykrywaniePortu() #wyjsciowo bylo com4

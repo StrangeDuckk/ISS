@@ -82,8 +82,8 @@ void loop() {
     // WAIT
   }
   
-
-  speed = Serial.parseInt();
+  pythonRamkaOdUzytkownika = Serial.parseInt();
+  speed = pythonRamkaOdUzytkownika;
   M_RuchOZadanaOdleglosc(speed);
   
   odpowiedzDoUzytkownika+=liczbaKontolna;

@@ -71,11 +71,24 @@ PolacznieZArduino(arduino)
 # ----------------- funkcje -----------------
 
 def PisanieRamki():
-    zadania = input(" ------------ Pisanie Ramki {}")
+    stringTemp = " -------- Pisanie Ramki do wiadomosci o nr:",LiczbaKontrolna ,"------\n"
+    zadania = input(stringTemp)
+
+    #dla V: walidacja podanej predkosci:
+    if not zadania.isdigit():
+        return None
+    elif int(zadania) < 0 or int(zadania) > 255:
+        return None
+    else:
+        return zadania
+
+def KonfiguracjaSprzetu():
+    #todo konfiguracja sprzetu, jak jedzie nie tak jak chcemy to odwrocic forward backward piny
+    return None
 
 def InputUzytkownika():
     # wysyłanie danych do Arduino    Podaj predkosc (0-255) do Arduino
-    cmd = input("========================================\nWpisz \nh lub p dla pomocy,\nr dla pisania ramki\nq zeby zakonczyc:\n")
+    cmd = input("========================================\nWpisz \nh lub p dla pomocy,\nr dla pisania ramki, \nk dla konfiguracji sprzetu,\nq zeby zakonczyc:\n")
 
     if cmd == "q" or cmd == "quit" or cmd == "exit" or cmd == "Q":
         return "q"
@@ -83,18 +96,11 @@ def InputUzytkownika():
         #todo napisac help
         print("HELP TODO DO NAPISANIA")
         return "h"
+    elif cmd == "k" or cmd == "K" or cmd == "konf":
+        #todo funkcja konfiguracyjna dla sprzetu
+        return KonfiguracjaSprzetu()
     elif cmd == "r" or cmd == "R" or cmd == "ramka":
         return PisanieRamki()
-
-    # walidacja podanej predkosci:
-    if not cmd.isdigit():
-        return None
-    elif int(cmd) < 0 or int(cmd) > 255:
-        return None
-    else:
-        return cmd
-
-
 
 
 #============================================================================================
@@ -141,8 +147,8 @@ finally:
         BY, 
         IN, 
         KonfN,
-        "/n", //znacznik konca dla spelnienia wymagan
-        <numerWiadomosci>
+        Num<numerWiadomosci>,
+        "/n"
     }
     """
     #todo do konfiguracji sprzetu oddzielna ramka do wyslania
@@ -154,8 +160,8 @@ finally:
     {
         silnik1<Forward>Y/N, 
         silnik2<Forward>Y/N, 
-        "/n", //znacznik konca dla spelnienia wymagan
-        <numerWiadomosci>
+        Num<numerWiadomosci>,
+        "/n"
     }
     ciag dalszy numeracji wiadomosci
     """

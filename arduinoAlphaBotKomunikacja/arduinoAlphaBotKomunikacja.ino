@@ -1,17 +1,17 @@
 #define PIN_LEFT_MOTOR_SPEED 5
-#define PIN_LEFT_MOTOR_FORWARD A0            
-#define PIN_LEFT_MOTOR_REVERSE A1
+int PIN_LEFT_MOTOR_FORWARD = A0;            
+int PIN_LEFT_MOTOR_REVERSE = A1;
 #define PIN_LEFT_ENCODER 2
    
 #define PIN_RIGHT_MOTOR_SPEED 6
-#define PIN_RIGHT_MOTOR_FORWARD A2            
-#define PIN_RIGHT_MOTOR_REVERSE A3
+int PIN_RIGHT_MOTOR_FORWARD = A2;         
+int PIN_RIGHT_MOTOR_REVERSE = A3;
 #define PIN_RIGHT_ENCODER 3
 
 #define SERIAL_BAUD_RATE 9600
 
 int liczbaKontolna = 0;
-String odpowiedzDoUzytkownika = "{";
+char odpowiedzDoUzytkownika[200];
 
 int left_encoder_count=0;
 int right_encoder_count=0;
@@ -22,6 +22,22 @@ void left_encoder(){
 
 void right_encoder(){
   right_encoder_count++;  
+}
+
+void KonfiguracjaRuchuSwapSilnik(bool prawy,bool lewy){
+  if(lewy){
+    int temp = PIN_LEFT_MOTOR_REVERSE;
+    PIN_LEFT_MOTOR_REVERSE = PIN_LEFT_MOTOR_FORWARD;
+    PIN_LEFT_MOTOR_FORWARD = temp;
+    strcat(odpowiedzDoUzytkownika, "|odwrocono kierunek lewego silnika|");
+  }
+  if(prawy){
+    int temp = PIN_RIGHT_MOTOR_REVERSE;
+    PIN_RIGHT_MOTOR_REVERSE = PIN_RIGHT_MOTOR_FORWARD;
+    PIN_RIGHT_MOTOR_FORWARD = temp;
+    strcat(odpowiedzDoUzytkownika, "|odwrocono kierunek prawego silnika|");
+  }
+  //todo zapisanie konfiguracji po restarcie
 }
 
 //--------------------- M + V - ruch o zadana odleglosc -----------------------
@@ -46,15 +62,18 @@ void M_RuchOZadanaOdleglosc(int speed){
   digitalWrite(PIN_RIGHT_MOTOR_REVERSE, LOW);
   analogWrite(PIN_RIGHT_MOTOR_SPEED, 0);
 
-  odpowiedzDoUzytkownika+="M {Wykonano ruch o ";
-  odpowiedzDoUzytkownika+=speed;
-  odpowiedzDoUzytkownika+=", (odpowiedz kol: [";
-  odpowiedzDoUzytkownika+=left_encoder_count,DEC;
-  odpowiedzDoUzytkownika+=" ";
-  odpowiedzDoUzytkownika+=right_encoder_count,DEC;
-  odpowiedzDoUzytkownika+="]}, ";
+  char buf[20]; //temp buffer do konwersji liczb
+  strcat(odpowiedzDoUzytkownika, "M {Wykonano ruch o ");
+  sprintf(buf, "%d", speed);   // konwersja na tekst
+  strcat(odpowiedzDoUzytkownika, buf);
+  strcat(odpowiedzDoUzytkownika, ", (odpowiedz kol: [");
+  sprintf(buf, "%d", speed);
+  strcat(odpowiedzDoUzytkownika, buf);
+  strcat(odpowiedzDoUzytkownika, " ");
+  sprintf(buf, "%d", right_encoder_count);
+  strcat(odpowiedzDoUzytkownika, buf);
+  strcat(odpowiedzDoUzytkownika, "]}, ");
 }
-
 
 void setup() {
   Serial.begin(SERIAL_BAUD_RATE);
@@ -76,20 +95,54 @@ void setup() {
 }
 
 
+
 void loop() {
+  strcat(odpowiedzDoUzytkownika,"}");
   int speed = 0;
-  while(Serial.available()<=0){
-    // WAIT
+  int pythonRamkaOdUzytkownika = 0;
+  String cmd = "";
+
+  // while(Serial.available()<=0){
+  //   // WAIT
+  // }
+  if (Serial.available()){
+    cmd = Serial.readStringUntil('}');
+
+    if(cmd.indexOf("KONFIG")>=0){
+      //przykladowa ramka: {KONFIG,RN,LY,<NUMER>,"\n"}
+      bool swapLewy =  false;
+      bool swapPrawy = false;
+      if(cmd.indexOf("LY")>=0)
+        swapLewy = true;
+      if(cmd.indexOf("RY")>=0)
+        swapPrawy = true;
+
+      if(swapPrawy || swapLewy)
+        KonfiguracjaRuchuSwapSilnik(swapPrawy, swapLewy);
+      else
+        strcat(odpowiedzDoUzytkownika, "|Brak zmian w konfiguracji|");
+
+
+      char buf[10];
+      sprintf(buf, "%d", liczbaKontolna);
+      strcat(odpowiedzDoUzytkownika, buf);
+
+      strcat(odpowiedzDoUzytkownika,"}");
+      Serial.println(odpowiedzDoUzytkownika);
+      //todo ack cale
+    }
+    else{
+      //todo ramka ruchowa i reszta ramek
+      pythonRamkaOdUzytkownika = Serial.parseInt();
+      speed = pythonRamkaOdUzytkownika;
+      M_RuchOZadanaOdleglosc(speed);
+    }
   }
   
-  pythonRamkaOdUzytkownika = Serial.parseInt();
-  speed = pythonRamkaOdUzytkownika;
-  M_RuchOZadanaOdleglosc(speed);
-  
-  odpowiedzDoUzytkownika+=liczbaKontolna;
-  odpowiedzDoUzytkownika+="}";
-  Serial.println(odpowiedzDoUzytkownika);
-  odpowiedzDoUzytkownika = "{";
+  //odpowiedzDoUzytkownika+=liczbaKontolna;
+  //odpowiedzDoUzytkownika+="}";
+  //Serial.println(odpowiedzDoUzytkownika);
+  strcpy(odpowiedzDoUzytkownika, "{"); // reset zawartości
   liczbaKontolna+=1;
 
   left_encoder_count=0;

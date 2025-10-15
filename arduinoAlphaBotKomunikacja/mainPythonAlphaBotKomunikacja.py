@@ -90,8 +90,27 @@ def PisanieRamki():
         return zadania
 
 def KonfiguracjaSprzetu():
-    #todo konfiguracja sprzetu, jak jedzie nie tak jak chcemy to odwrocic forward backward piny
-    return None
+    #przykladowa ramka: {KONFIG,RN,LY,<NUMER>,"\n"}
+    print(" --------------- konfiguracja sprzetu --------------")
+    ramka = "{KONFIG,"
+    cmd = input("Czy odwrocic (forward/backward) silnik prawy? (Y/N)")
+    if cmd == "Y" or cmd == "y":
+        ramka+="RY,"
+    else:
+        ramka+="RN,"
+
+    cmd = input("Czy odwrocic (forward/backward) silnik lewy? (Y/N)")
+    if cmd == "Y" or cmd == "y":
+        ramka+="LY,"
+    else:
+        ramka+="LN,"
+
+    ramka+=str(LiczbaKontrolna)
+    ramka+=",\n}"
+    print("powstala ramka: ",ramka)
+    return ramka
+
+#TODO NAPRAWIC PROBLEM Z LICZBA KONTROLNA W ARDUINO
 
 def InputUzytkownika():
     # wysyłanie danych do Arduino    Podaj predkosc (0-255) do Arduino

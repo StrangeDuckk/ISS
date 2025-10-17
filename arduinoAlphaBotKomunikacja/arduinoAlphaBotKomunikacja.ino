@@ -10,8 +10,8 @@ int PIN_RIGHT_MOTOR_REVERSE = A3;
 
 #define SERIAL_BAUD_RATE 9600
 
-int liczbaKontolna = 0;
-char odpowiedzDoUzytkownika[200];
+int liczbaKontrolna = 0;
+String odpowiedzDoUzytkownika= "{";
 
 int left_encoder_count=0;
 int right_encoder_count=0;
@@ -29,13 +29,13 @@ void KonfiguracjaRuchuSwapSilnik(bool prawy,bool lewy){
     int temp = PIN_LEFT_MOTOR_REVERSE;
     PIN_LEFT_MOTOR_REVERSE = PIN_LEFT_MOTOR_FORWARD;
     PIN_LEFT_MOTOR_FORWARD = temp;
-    strcat(odpowiedzDoUzytkownika, "|odwrocono kierunek lewego silnika|");
+    odpowiedzDoUzytkownika += "|odwrocono kierunek lewego silnika|";
   }
   if(prawy){
     int temp = PIN_RIGHT_MOTOR_REVERSE;
     PIN_RIGHT_MOTOR_REVERSE = PIN_RIGHT_MOTOR_FORWARD;
     PIN_RIGHT_MOTOR_FORWARD = temp;
-    strcat(odpowiedzDoUzytkownika, "|odwrocono kierunek prawego silnika|");
+    odpowiedzDoUzytkownika += "|odwrocono kierunek prawego silnika|";
   }
   //todo zapisanie konfiguracji po restarcie
 }
@@ -62,17 +62,13 @@ void M_RuchOZadanaOdleglosc(int speed){
   digitalWrite(PIN_RIGHT_MOTOR_REVERSE, LOW);
   analogWrite(PIN_RIGHT_MOTOR_SPEED, 0);
 
-  char buf[20]; //temp buffer do konwersji liczb
-  strcat(odpowiedzDoUzytkownika, "M {Wykonano ruch o ");
-  sprintf(buf, "%d", speed);   // konwersja na tekst
-  strcat(odpowiedzDoUzytkownika, buf);
-  strcat(odpowiedzDoUzytkownika, ", (odpowiedz kol: [");
-  sprintf(buf, "%d", speed);
-  strcat(odpowiedzDoUzytkownika, buf);
-  strcat(odpowiedzDoUzytkownika, " ");
-  sprintf(buf, "%d", right_encoder_count);
-  strcat(odpowiedzDoUzytkownika, buf);
-  strcat(odpowiedzDoUzytkownika, "]}, ");
+  odpowiedzDoUzytkownika += "M {Wykonano ruch o ";
+  odpowiedzDoUzytkownika += speed;
+  odpowiedzDoUzytkownika += ", (odpowiedz kol: [";
+  odpowiedzDoUzytkownika += left_encoder_count;
+  odpowiedzDoUzytkownika += " ";
+  odpowiedzDoUzytkownika += right_encoder_count;
+  odpowiedzDoUzytkownika += "]}, ";
 }
 
 void setup() {
@@ -92,14 +88,14 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(PIN_LEFT_ENCODER), left_encoder, RISING);
   attachInterrupt(digitalPinToInterrupt(PIN_RIGHT_ENCODER), right_encoder, RISING);
 
+  liczbaKontrolna = 0;
 }
 
 
 
 void loop() {
-  strcat(odpowiedzDoUzytkownika,"}");
+  odpowiedzDoUzytkownika = "{";
   int speed = 0;
-  int pythonRamkaOdUzytkownika = 0;
   String cmd = "";
 
   // while(Serial.available()<=0){
@@ -120,30 +116,28 @@ void loop() {
       if(swapPrawy || swapLewy)
         KonfiguracjaRuchuSwapSilnik(swapPrawy, swapLewy);
       else
-        strcat(odpowiedzDoUzytkownika, "|Brak zmian w konfiguracji|");
+        odpowiedzDoUzytkownika += "|Brak zmian w konfiguracji|,";
 
+      odpowiedzDoUzytkownika += liczbaKontrolna;
 
-      char buf[10];
-      sprintf(buf, "%d", liczbaKontolna);
-      strcat(odpowiedzDoUzytkownika, buf);
-
-      strcat(odpowiedzDoUzytkownika,"}");
+      odpowiedzDoUzytkownika += "}";
       Serial.println(odpowiedzDoUzytkownika);
       //todo ack cale
     }
     else{
       //todo ramka ruchowa i reszta ramek
-      pythonRamkaOdUzytkownika = Serial.parseInt();
+      int pythonRamkaOdUzytkownika = Serial.parseInt();
       speed = pythonRamkaOdUzytkownika;
       M_RuchOZadanaOdleglosc(speed);
+      Serial.println(speed);
     }
   }
   
   //odpowiedzDoUzytkownika+=liczbaKontolna;
   //odpowiedzDoUzytkownika+="}";
   //Serial.println(odpowiedzDoUzytkownika);
-  strcpy(odpowiedzDoUzytkownika, "{"); // reset zawartości
-  liczbaKontolna+=1;
+  odpowiedzDoUzytkownika = "{"; // reset zawartości
+  liczbaKontrolna+=1;
 
   left_encoder_count=0;
   right_encoder_count=0;

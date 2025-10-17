@@ -78,8 +78,8 @@ PolacznieZArduino(arduino)
 # ----------------- funkcje -----------------
 
 def PisanieRamki():
-    stringTemp = " -------- Pisanie Ramki do wiadomosci o nr:",LiczbaKontrolna ,"------\n"
-    zadania = input(stringTemp)
+    print(" -------- Pisanie Ramki do wiadomosci o nr:",LiczbaKontrolna ,"------")
+    zadania = input()
 
     #dla V: walidacja podanej predkosci:
     if not zadania.isdigit():
@@ -110,7 +110,6 @@ def KonfiguracjaSprzetu():
     print("powstala ramka: ",ramka)
     return ramka
 
-#TODO NAPRAWIC PROBLEM Z LICZBA KONTROLNA W ARDUINO
 
 def InputUzytkownika():
     # wysyłanie danych do Arduino    Podaj predkosc (0-255) do Arduino
@@ -123,7 +122,6 @@ def InputUzytkownika():
         print("HELP TODO DO NAPISANIA")
         return "h"
     elif cmd == "k" or cmd == "K" or cmd == "konf":
-        #todo funkcja konfiguracyjna dla sprzetu
         return KonfiguracjaSprzetu()
     elif cmd == "r" or cmd == "R" or cmd == "ramka":
         return PisanieRamki()

@@ -65,7 +65,6 @@ BAUDRATE = 9600
 PONAWIANIE_LIMIT = 3 #3 razy program probuje ponowic polaczenie
 TIMEOUT_CONNECTION = 100
 TIMEOUT_RESPONSE = 100
-LiczbaKontrolna = 0
 
 # -------------------- otwarcie portu ------------------
 arduino = serial.Serial(PORT, BAUDRATE, timeout=1)
@@ -77,8 +76,41 @@ PolacznieZArduino(arduino)
 # ===================================================================================================
 # ----------------- funkcje -----------------
 
+def SumaKontrolna(ramka):
+    #suma kontrolna dla ramek to suma liczb z ramki %256 (zeby bylo na pewno na 8 bitach zapisane)
+    suma = 0
+    for digit in ramka:
+        if digit.isnumeric():
+            suma += int(digit)
+    return suma%256
+
+def SprawdzenieAckOdArduino(arduino):
+    #sprawdzenie czy Arduino wyslalo otrzymalo cala ramke
+    start_time = time.time()
+    while time.time() - start_time < TIMEOUT_RESPONSE:
+        if arduino.in_waiting > 0:
+            response = arduino.readline().decode().strip()
+            if response:
+                print("Arduino, ACK/NACK:", response)
+                if response.startswith("{ACK"):
+                    print("Arduino, ACK:", response, " odsylam ACK2")
+                    ACK_Odeslanie(arduino)
+                    return "ACK"
+                elif response.startswith("{NACK"):
+                    print("Arduino, NACK:", response)
+                    return "NACK"
+        time.sleep(0.05)
+    print("!TIMEOUT - Brak {ACK,...} od ARDUINO")
+    return "close"
+
+def ACK_Odeslanie(arduino):
+    #odeslanie drugiego ack do arduino zeby wykonalo polecenie
+    ack_ramka = "{ACK2\n}"
+    arduino.write(ack_ramka.encode())
+    print("ACK2 do Arduino:", ack_ramka)
+
 def PisanieRamki():
-    print(" -------- Pisanie Ramki do wiadomosci o nr:",LiczbaKontrolna ,"------")
+    print(" -------- Pisanie Ramki do wiadomosci:------")
     zadania = input()
 
     #dla V: walidacja podanej predkosci:
@@ -88,24 +120,25 @@ def PisanieRamki():
         return None
     else:
         return zadania
+    #todo wszystkie opcje i suma kontrolna w ramce
 
 def KonfiguracjaSprzetu():
-    #przykladowa ramka: {KONFIG,RN,LY,<NUMER>,"\n"}
+    #przykladowa ramka: {KONFIG,R0,L1,<sumaKONTROLNA>,"\n"}
     print(" --------------- konfiguracja sprzetu --------------")
     ramka = "{KONFIG,"
-    cmd = input("Czy odwrocic (forward/backward) silnik prawy? (Y/N)")
-    if cmd == "Y" or cmd == "y":
-        ramka+="RY,"
+    cmd = input("Czy odwrocic (forward/backward) silnik prawy (1=Tak,0=Nie)? (1/0)")
+    if cmd == "1":
+        ramka+="R1,"
     else:
-        ramka+="RN,"
+        ramka+="R0,"
 
-    cmd = input("Czy odwrocic (forward/backward) silnik lewy? (Y/N)")
-    if cmd == "Y" or cmd == "y":
-        ramka+="LY,"
+    cmd = input("Czy odwrocic (forward/backward) silnik lewy? (1=Tak,0=Nie)? (1/0)")
+    if cmd == "1":
+        ramka+="L1,"
     else:
-        ramka+="LN,"
+        ramka+="L0,"
 
-    ramka+=str(LiczbaKontrolna)
+    ramka+= "SK"+str(SumaKontrolna(ramka))
     ramka+=",\n}"
     print("powstala ramka: ",ramka)
     return ramka
@@ -132,23 +165,37 @@ def InputUzytkownika():
 try:
     while True:
         cmd = InputUzytkownika()
-        if cmd == "q":
+        ramka = ""
+        if cmd == 'q':
             break
         if cmd == "h":
             continue
-        if cmd is None:
-            print("Wpisz liczbe z zakresu 0-255!")
-            continue
 
+        print(f"Wyslanie ramki do arduino:     {cmd}")
         arduino.write(cmd.encode())
 
-        # odbiór odpowiedzi
-        while True:
-            arduinoResponse = arduino.readline().decode().strip()
-            if arduinoResponse:
-                print("------- Arduino odpowiedz na ramke ---------")
-                print("Arduino:", arduinoResponse)
-                break
+        # --------------- 1. oczekiwanie na ACK -------------
+        ack_status = SprawdzenieAckOdArduino(arduino)
+        if ack_status == "close" or ack_status == "NACK":
+            continue
+        elif ack_status == "ACK":
+            # ----------- 2. oczekiwanie na odpowiedz zwrotna od arduino ----------
+            print("Oczekiwanie na wykonanie zadania przez Arduino...")
+            start_time = time.time()
+            while True:
+                if arduino.in_waiting > 0:
+                    arduinoResponse = arduino.readline().decode().strip()
+                    if arduinoResponse.startswith("{ARD"):
+                        print("------- Arduino odpowiedz na ramke ---------")
+                        print("Arduino:" , arduinoResponse)
+                        break
+                time.sleep(0.05)
+                if time.time() - start_time > TIMEOUT_RESPONSE:
+                    print("!TIMEOUT - Brak odpowiedzi {ARD, ...} od Arduino.")
+
+
+        print("\n =================== Kolejna komenda ===============")
+
 
 except KeyboardInterrupt:
     print("Zakonczono program.")
@@ -157,7 +204,6 @@ finally:
     arduino.close()
     print("Zamknieto polaczenie.")
 
-#todo zapis logowania do pliku txt, nadpisywanie za kazdym uruchomieniem programu
 
 #todo komunikacja z uzytkownikiem
     #todo uzytkownik podaje co chce wyslac literami jedna obok drugiej np mrvb
@@ -175,10 +221,7 @@ finally:
         "/n"
     }
     """
-    #todo do konfiguracji sprzetu oddzielna ramka do wyslania
-    #todo nuemrWiadomosci jako liczba kontrolna, kontrolowana od strony pythona i Arduino,np Arduino: 5, python ACK jako 5.1 i ack po stronie arduino dostaje jako 5.2
 
-    #todo ramka konfiguracji
     """
     ustalenie czy po uruchomieniu silnik jedzie do przodu czy do tylu, ewentualna zmiana po stornie arduino w przypadku odbioru N
     {
@@ -189,8 +232,8 @@ finally:
     }
     ciag dalszy numeracji wiadomosci
     """
+    #todo zapisac konfiguracje po stronie arduino w kodzie, zeby przy resecie zostala
 
 #todo komenda help -> taka dokumentacja, ktora komenda robi co
 #todo zebranie danych do ramki
 #todo wysylanie ramki a nie suchej liczby
-#todo sprawdzanie czy cala ramka dotarla i wysylanie odpowiedzi czy dotarla (ack) + liczba kontrolna

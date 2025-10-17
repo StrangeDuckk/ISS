@@ -10,8 +10,7 @@ int PIN_RIGHT_MOTOR_REVERSE = A3;
 
 #define SERIAL_BAUD_RATE 9600
 
-int liczbaKontrolna = 0;
-String odpowiedzDoUzytkownika= "{";
+String odpowiedzDoUzytkownika= "{ARD,";
 
 int left_encoder_count=0;
 int right_encoder_count=0;
@@ -22,6 +21,30 @@ void left_encoder(){
 
 void right_encoder(){
   right_encoder_count++;  
+}
+
+bool PoprawnaSumaKontrolna(String cmd, int sumaPodana){
+  int suma = 0;
+  for(int i = 0; i < cmd.length(); i++){
+    char znak = cmd[i];
+    if (znak >= '0' && znak <= '9'){
+      suma+=(znak - '0');
+    }
+  }
+  suma = suma%256;
+
+  if(suma == sumaPodana)
+    return true;
+  else
+    return false;
+}
+
+void WyslijNACK(){
+  Serial.println("{NACK}");
+}
+
+void WyslijACK(int SumaWynik = 0){
+  Serial.println("{ACK,SK"+String(SumaWynik)+"}");
 }
 
 void KonfiguracjaRuchuSwapSilnik(bool prawy,bool lewy){
@@ -87,38 +110,52 @@ void setup() {
 
   attachInterrupt(digitalPinToInterrupt(PIN_LEFT_ENCODER), left_encoder, RISING);
   attachInterrupt(digitalPinToInterrupt(PIN_RIGHT_ENCODER), right_encoder, RISING);
-
-  liczbaKontrolna = 0;
 }
 
 
 
 void loop() {
-  odpowiedzDoUzytkownika = "{";
+  odpowiedzDoUzytkownika = "{ARD,";
   int speed = 0;
   String cmd = "";
 
-  // while(Serial.available()<=0){
-  //   // WAIT
-  // }
   if (Serial.available()){
-    cmd = Serial.readStringUntil('}');
+    cmd = Serial.readStringUntil('\n');
+
+    //sciagniecie ramki i podzielenie jej do walidacji
+    if (cmd.indexOf("ACK2") < 0){
+      int pozycjaSK = cmd.indexOf("SK");
+      if (pozycjaSK != -1){
+        String czescGlowna = cmd.substring(0,pozycjaSK);
+      
+        String temp = cmd.substring(pozycjaSK+2, cmd.indexOf(',', pozycjaSK+2));
+        int  sumaKontrolnaZRamki = temp.toInt();
+        if (PoprawnaSumaKontrolna(czescGlowna, sumaKontrolnaZRamki) == false){
+          WyslijNACK();
+        }
+        else{
+          WyslijACK(sumaKontrolnaZRamki);
+        }
+      }
+      else{
+        WyslijNACK();
+      }
+    }
+    
 
     if(cmd.indexOf("KONFIG")>=0){
       //przykladowa ramka: {KONFIG,RN,LY,<NUMER>,"\n"}
       bool swapLewy =  false;
       bool swapPrawy = false;
-      if(cmd.indexOf("LY")>=0)
+      if(cmd.indexOf("L1")>=0)
         swapLewy = true;
-      if(cmd.indexOf("RY")>=0)
+      if(cmd.indexOf("R1")>=0)
         swapPrawy = true;
 
       if(swapPrawy || swapLewy)
         KonfiguracjaRuchuSwapSilnik(swapPrawy, swapLewy);
       else
         odpowiedzDoUzytkownika += "|Brak zmian w konfiguracji|,";
-
-      odpowiedzDoUzytkownika += liczbaKontrolna;
 
       odpowiedzDoUzytkownika += "}";
       Serial.println(odpowiedzDoUzytkownika);
@@ -133,11 +170,9 @@ void loop() {
     }
   }
   
-  //odpowiedzDoUzytkownika+=liczbaKontolna;
   //odpowiedzDoUzytkownika+="}";
   //Serial.println(odpowiedzDoUzytkownika);
-  odpowiedzDoUzytkownika = "{"; // reset zawartości
-  liczbaKontrolna+=1;
+  odpowiedzDoUzytkownika = "{ARD,"; // reset zawartości
 
   left_encoder_count=0;
   right_encoder_count=0;

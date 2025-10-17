@@ -82,7 +82,7 @@ def SumaKontrolna(ramka):
     for digit in ramka:
         if digit.isnumeric():
             suma += int(digit)
-    return suma%256
+    return str(suma%256)
 
 def SprawdzenieAckOdArduino(arduino):
     #sprawdzenie czy Arduino wyslalo otrzymalo cala ramke
@@ -108,18 +108,82 @@ def ACK_Odeslanie(arduino):
     arduino.write(ack_ramka.encode())
     print("OUT| ACK2 do Arduino:", ack_ramka)
 
-def PisanieRamki():
-    print(" -------- Pisanie Ramki do wiadomosci:------")
-    zadania = input()
+# ------------------------ funkcje robota --------------------------
+def FunkcjaRobot_M():
+    # ruch o m cm, + w przod, - w tyl
+    cmd = ""
+    while not cmd.lstrip("-").isnumeric():
+        cmd = input("Podaj o jaka odleglosc (w cm) robot ma sie przesunac (dla >0 w przod, dla <0 w tyl):")
+    return "M"+str(cmd)+", "
 
-    #dla V: walidacja podanej predkosci:
-    if not zadania.isdigit():
-        return None
-    elif int(zadania) < 0 or int(zadania) > 255:
-        return None
-    else:
-        return zadania
-    #todo wszystkie opcje i suma kontrolna w ramce
+def FunkcjaRobot_R():
+    #todo
+    pass
+
+def FunkcjaRobot_V():
+    #todo
+    pass
+
+def FunkcjaRobot_T():
+    #todo
+    pass
+
+def FunkcjaRobot_S():
+    #todo
+    pass
+
+def FunkcjaRobot_B():
+    #todo
+    pass
+
+def FunkcjaRobot_I():
+    #todo
+    pass
+
+
+def PisanieRamki():
+    # przykladowa ramka: {TASK, M10, R-15, }
+    print(" -------- Pisanie Ramki do wiadomosci:------")
+    print("Dostepne funkcje robota: \n"
+          "M- move - ruch o zadana odleglosc w cm (dodatnia - przod, ujemna - tyl)\n"
+          "R - rotate - obrot o zadana liczbe krokow (dodatni - prawo, ujemny - lewo)\n"
+          "| V - velocity - ustawienie predkosci liniowej bota (jedzie do momentu przeslania S - stop)\n" #wyslane samo, robot jedzie caly czas 
+          "| T - czas w jakim ma odbywac sie V\n" # wyslane samo po prostu odliczy czas #todo moze sprawdzenie czy samo
+          "| S - stop - natychmiastowe zatrzymanie\n" #jak samo to zatrzyma V, moze isc samo
+          "(w przypadku wyslania \"V<liczba>T<liczbaSekund>S\" robot bedzie jechal przez T sekund predkoscia V a potem sie zatrzyma)\n"
+          "B - bierzacy odczyt sonaru w cm\n"
+          "I - bierzacy odczyt czujnika IR\n"
+          "Q - zakoncz pisanie ramki")
+    zadania = input("Wpisz LITERY odpowiadajace funkcjom ktorych chcesz uzyc (np. RvTSi)")
+    ramka = "{TASK, "
+    if zadania.__contains__("M") or zadania.__contains__("m"):
+        ramka += FunkcjaRobot_M()
+    if zadania.__contains__("R") or zadania.__contains__("r"):
+        ramka += FunkcjaRobot_R()
+    if zadania.__contains__("V") or zadania.__contains__("v"):
+        ramka += FunkcjaRobot_V()
+    if zadania.__contains__("T") or zadania.__contains__("t"):
+        ramka += FunkcjaRobot_T()#todo jak samo to pominac w ramce
+    if zadania.__contains__("S") or zadania.__contains__("s"):
+        ramka += FunkcjaRobot_S()
+    if zadania.__contains__("B") or zadania.__contains__("b"):
+        ramka += FunkcjaRobot_B()
+    if zadania.__contains__("I") or zadania.__contains__("i"):
+        ramka += FunkcjaRobot_I()
+    if zadania.__contains__("Q") or zadania.__contains__("q"):
+        pass #zostaje pass bo chcemy wrocic do opcji wybierania
+
+    ##dla V: walidacja podanej predkosci:
+    #if not zadania.isdigit():
+    #    return None
+    #elif int(zadania) < 0 or int(zadania) > 255:
+    #    return None
+    #else:
+    #    return zadania
+
+    ramka += SumaKontrolna(ramka)+",\n}"
+    return ramka
+    #todo ogarnac wszystko pod stonie arduino jako odpowiedzi
 
 def KonfiguracjaSprzetu():
     #przykladowa ramka: {KONFIG,R0,L1,<sumaKONTROLNA>,"\n"}
@@ -142,7 +206,7 @@ def KonfiguracjaSprzetu():
     else:
         ramka+="L0,"
 
-    ramka+= "SK"+str(SumaKontrolna(ramka))
+    ramka+= "SK"+SumaKontrolna(ramka)
     ramka+=",\n}"
     return ramka
 

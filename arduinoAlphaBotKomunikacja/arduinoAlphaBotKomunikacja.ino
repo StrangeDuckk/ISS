@@ -1,3 +1,5 @@
+// ------------- ustawienia bazowe --------------
+
 #define PIN_LEFT_MOTOR_SPEED 5
 int PIN_LEFT_MOTOR_FORWARD = A0;            
 int PIN_LEFT_MOTOR_REVERSE = A1;
@@ -7,6 +9,59 @@ int PIN_LEFT_MOTOR_REVERSE = A1;
 int PIN_RIGHT_MOTOR_FORWARD = A2;         
 int PIN_RIGHT_MOTOR_REVERSE = A3;
 #define PIN_RIGHT_ENCODER 3
+
+//  ----------------- wciaganie konfiguracji z EEPROM --------------
+// #include <EEPROM.h>
+
+// void ZapiszKonfiguracjeDoEEPROM();
+// void WczytajKonfiguracjeZEEPROM();
+
+// struct KonfiguracjaSilnikow{
+//   int PIN_LEFT_MOTOR_FORWARD;
+//   int PIN_LEFT_MOTOR_REVERSE;
+//   int PIN_RIGHT_MOTOR_FORWARD;
+//   int PIN_RIGHT_MOTOR_REVERSE;
+//   bool zapisana;
+// };
+#include <EEPROM.h>
+
+struct KonfiguracjaSilnikow {
+  int PIN_LEFT_MOTOR_FORWARD;
+  int PIN_LEFT_MOTOR_REVERSE;
+  int PIN_RIGHT_MOTOR_FORWARD;
+  int PIN_RIGHT_MOTOR_REVERSE;
+  bool initialized;
+};
+
+#define EEPROM_ADRES_KONFIG 0
+
+KonfiguracjaSilnikow config;
+
+// Funkcje EEPROM
+void ZapiszKonfiguracjeDoEEPROM() {
+  config.PIN_LEFT_MOTOR_FORWARD = PIN_LEFT_MOTOR_FORWARD;
+  config.PIN_LEFT_MOTOR_REVERSE = PIN_LEFT_MOTOR_REVERSE;
+  config.PIN_RIGHT_MOTOR_FORWARD = PIN_RIGHT_MOTOR_FORWARD;
+  config.PIN_RIGHT_MOTOR_REVERSE = PIN_RIGHT_MOTOR_REVERSE;
+  config.initialized = true;
+  EEPROM.put(EEPROM_ADRES_KONFIG, config);
+  Serial.println("|Zapisano konfiguracje silnikow w EEPROM|}");
+}
+
+void WczytajKonfiguracjeZEEPROM() {
+  EEPROM.get(EEPROM_ADRES_KONFIG, config);
+  //if (config.initialized) {
+    PIN_LEFT_MOTOR_FORWARD = config.PIN_LEFT_MOTOR_FORWARD;
+    PIN_LEFT_MOTOR_REVERSE = config.PIN_LEFT_MOTOR_REVERSE;
+    PIN_RIGHT_MOTOR_FORWARD = config.PIN_RIGHT_MOTOR_FORWARD;
+    PIN_RIGHT_MOTOR_REVERSE = config.PIN_RIGHT_MOTOR_REVERSE;
+    //Serial.println("{ARD,|Wczytano konfiguracje silnikow z EEPROM|}");
+  //} else {
+    //Serial.println("{ARD,|EEPROM pusty - uzyto domyslnych pinow|}");
+  //}
+}
+
+// ======================================================================================
 
 #define SERIAL_BAUD_RATE 9600
 
@@ -48,19 +103,42 @@ void WyslijACK(int SumaWynik = 0){
 }
 
 void KonfiguracjaRuchuSwapSilnik(bool prawy,bool lewy){
+  bool zamieniono = false;
   if(lewy){
     int temp = PIN_LEFT_MOTOR_REVERSE;
     PIN_LEFT_MOTOR_REVERSE = PIN_LEFT_MOTOR_FORWARD;
     PIN_LEFT_MOTOR_FORWARD = temp;
     odpowiedzDoUzytkownika += "|odwrocono kierunek lewego silnika|";
+    zamieniono = true;
   }
   if(prawy){
     int temp = PIN_RIGHT_MOTOR_REVERSE;
     PIN_RIGHT_MOTOR_REVERSE = PIN_RIGHT_MOTOR_FORWARD;
     PIN_RIGHT_MOTOR_FORWARD = temp;
     odpowiedzDoUzytkownika += "|odwrocono kierunek prawego silnika|";
+    zamieniono = true;
   }
-  //todo zapisanie konfiguracji po restarcie
+  if (zamieniono)
+    ZapiszKonfiguracjeDoEEPROM();
+}
+
+void setup() {
+  Serial.begin(SERIAL_BAUD_RATE);
+  WczytajKonfiguracjeZEEPROM();
+  Serial.println("Polaczenie z Arduino jest gotowe.");
+  
+  pinMode(PIN_LEFT_MOTOR_SPEED, OUTPUT);
+  analogWrite(PIN_LEFT_MOTOR_SPEED, 0);
+  pinMode(PIN_LEFT_MOTOR_FORWARD, OUTPUT);
+  pinMode(PIN_LEFT_MOTOR_REVERSE, OUTPUT);
+
+  pinMode(PIN_RIGHT_MOTOR_SPEED, OUTPUT);
+  analogWrite(PIN_RIGHT_MOTOR_SPEED, 0);
+  pinMode(PIN_RIGHT_MOTOR_FORWARD, OUTPUT);
+  pinMode(PIN_RIGHT_MOTOR_REVERSE, OUTPUT);
+
+  attachInterrupt(digitalPinToInterrupt(PIN_LEFT_ENCODER), left_encoder, RISING);
+  attachInterrupt(digitalPinToInterrupt(PIN_RIGHT_ENCODER), right_encoder, RISING);
 }
 
 //--------------------- M + V - ruch o zadana odleglosc -----------------------
@@ -93,26 +171,6 @@ void M_RuchOZadanaOdleglosc(int speed){
   odpowiedzDoUzytkownika += right_encoder_count;
   odpowiedzDoUzytkownika += "]}, ";
 }
-
-void setup() {
-  Serial.begin(SERIAL_BAUD_RATE);
-  Serial.println("Polaczenie z Arduino jest gotowe.");
-  
-  pinMode(PIN_LEFT_MOTOR_SPEED, OUTPUT);
-  analogWrite(PIN_LEFT_MOTOR_SPEED, 0);
-  pinMode(PIN_LEFT_MOTOR_FORWARD, OUTPUT);
-  pinMode(PIN_LEFT_MOTOR_REVERSE, OUTPUT);
-
-  pinMode(PIN_RIGHT_MOTOR_SPEED, OUTPUT);
-  analogWrite(PIN_RIGHT_MOTOR_SPEED, 0);
-  pinMode(PIN_RIGHT_MOTOR_FORWARD, OUTPUT);
-  pinMode(PIN_RIGHT_MOTOR_REVERSE, OUTPUT);
-
-  attachInterrupt(digitalPinToInterrupt(PIN_LEFT_ENCODER), left_encoder, RISING);
-  attachInterrupt(digitalPinToInterrupt(PIN_RIGHT_ENCODER), right_encoder, RISING);
-}
-
-
 
 void loop() {
   odpowiedzDoUzytkownika = "{ARD,";
@@ -166,7 +224,7 @@ void loop() {
       int pythonRamkaOdUzytkownika = Serial.parseInt();
       speed = pythonRamkaOdUzytkownika;
       M_RuchOZadanaOdleglosc(speed);
-      Serial.println(speed);
+      Serial.println(odpowiedzDoUzytkownika);
     }
   }
   

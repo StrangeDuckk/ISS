@@ -33,7 +33,7 @@ def PolacznieZArduino(arduino):
                     response = arduino.readline().decode().strip()
                     if response:
                         print("Polaczone z Arduino!")
-                        print("Arduino:", response)
+                        print("IN| Arduino:", response)
                         connectedFlag = True
                         break
 
@@ -91,13 +91,12 @@ def SprawdzenieAckOdArduino(arduino):
         if arduino.in_waiting > 0:
             response = arduino.readline().decode().strip()
             if response:
-                print("Arduino, ACK/NACK:", response)
                 if response.startswith("{ACK"):
-                    print("Arduino, ACK:", response, " odsylam ACK2")
+                    print("IN| Arduino, ACK:", response, " odsylam ACK2")
                     ACK_Odeslanie(arduino)
                     return "ACK"
                 elif response.startswith("{NACK"):
-                    print("Arduino, NACK:", response)
+                    print("IN| Arduino, NACK:", response)
                     return "NACK"
         time.sleep(0.05)
     print("!TIMEOUT - Brak {ACK,...} od ARDUINO")
@@ -107,7 +106,7 @@ def ACK_Odeslanie(arduino):
     #odeslanie drugiego ack do arduino zeby wykonalo polecenie
     ack_ramka = "{ACK2\n}"
     arduino.write(ack_ramka.encode())
-    print("ACK2 do Arduino:", ack_ramka)
+    print("OUT| ACK2 do Arduino:", ack_ramka)
 
 def PisanieRamki():
     print(" -------- Pisanie Ramki do wiadomosci:------")
@@ -126,13 +125,18 @@ def KonfiguracjaSprzetu():
     #przykladowa ramka: {KONFIG,R0,L1,<sumaKONTROLNA>,"\n"}
     print(" --------------- konfiguracja sprzetu --------------")
     ramka = "{KONFIG,"
-    cmd = input("Czy odwrocic (forward/backward) silnik prawy (1=Tak,0=Nie)? (1/0)")
+    cmd = ""
+    while cmd not in("1", "0"):
+        cmd = input("Czy odwrocic (forward/backward) silnik prawy (1=Tak,0=Nie)? (1/0)")
+
     if cmd == "1":
         ramka+="R1,"
     else:
         ramka+="R0,"
 
-    cmd = input("Czy odwrocic (forward/backward) silnik lewy? (1=Tak,0=Nie)? (1/0)")
+    cmd = ""
+    while cmd not in("1", "0"):
+        cmd = input("Czy odwrocic (forward/backward) silnik lewy? (1=Tak,0=Nie)? (1/0)")
     if cmd == "1":
         ramka+="L1,"
     else:
@@ -140,9 +144,7 @@ def KonfiguracjaSprzetu():
 
     ramka+= "SK"+str(SumaKontrolna(ramka))
     ramka+=",\n}"
-    print("powstala ramka: ",ramka)
     return ramka
-
 
 def InputUzytkownika():
     # wysyłanie danych do Arduino    Podaj predkosc (0-255) do Arduino
@@ -171,7 +173,7 @@ try:
         if cmd == "h":
             continue
 
-        print(f"Wyslanie ramki do arduino:     {cmd}")
+        print(f"OUT| Wyslanie ramki do arduino:     {cmd}")
         arduino.write(cmd.encode())
 
         # --------------- 1. oczekiwanie na ACK -------------
@@ -187,7 +189,7 @@ try:
                     arduinoResponse = arduino.readline().decode().strip()
                     if arduinoResponse.startswith("{ARD"):
                         print("------- Arduino odpowiedz na ramke ---------")
-                        print("Arduino:" , arduinoResponse)
+                        print("IN| Arduino:" , arduinoResponse)
                         break
                 time.sleep(0.05)
                 if time.time() - start_time > TIMEOUT_RESPONSE:
@@ -232,7 +234,6 @@ finally:
     }
     ciag dalszy numeracji wiadomosci
     """
-    #todo zapisac konfiguracje po stronie arduino w kodzie, zeby przy resecie zostala
 
 #todo komenda help -> taka dokumentacja, ktora komenda robi co
 #todo zebranie danych do ramki

@@ -92,7 +92,7 @@ def SprawdzenieAckOdArduino(arduino):
         start_time = time.time()
         while time.time() - start_time < TIMEOUT_RESPONSE:
             if arduino.in_waiting > 0:
-                response = arduino.readline().decode().strip()
+                response = arduino.readline().decode().strip().replace("\n", "\\n")
                 if response:
                     if response.startswith("{ACK"):
                         print("IN| Arduino, ACK:", response, " odsylam ACK2")
@@ -334,7 +334,7 @@ try:
 
         arduino.reset_input_buffer()
         arduino.reset_output_buffer()
-        print(f"OUT| Wyslanie ramki do arduino:     {cmd}")#todo ladne wypisywanie /n
+        print(f"OUT| Wyslanie ramki do arduino:     {cmd.replace("\n", "\\n")}")
         arduino.write(cmd.encode())
         arduino.flush()
 
@@ -351,7 +351,7 @@ try:
                     arduinoResponse = arduino.readline().decode().strip()
                     if arduinoResponse.startswith("{DONE"):
                         print("------- Arduino odpowiedz na ramke ---------")
-                        print("IN| Arduino:" , arduinoResponse)
+                        print("IN| Arduino:" , arduinoResponse.replace("\n", "\\n"))
                         break
                 time.sleep(0.05)
                 if time.time() - start_time > TIMEOUT_RESPONSE:
@@ -375,7 +375,7 @@ finally:
     #todo przeslanie ramki z danymi w stylu
     """
     przykladowa ramka funkcyjna:
-    {TASK, M10, R-90, V100, T5, S1, B1, I1, 19,\n}
+    {TASK, M10, R-90, V100, T5, S1, B1, I1, SK19,\n}
     
     przykladowa ramka konfiguracji sprzetu:
     {KONFIG,R1,L0,SK1,\n}

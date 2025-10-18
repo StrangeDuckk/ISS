@@ -89,6 +89,27 @@ void WyslijACK(){
   Serial.println("{ACK}");
 }
 
+void setup() {
+  Serial.begin(SERIAL_BAUD_RATE);
+  WczytajKonfiguracjeZEEPROM();
+  Serial.println("Polaczenie z Arduino jest gotowe.");
+  
+  pinMode(PIN_LEFT_MOTOR_SPEED, OUTPUT);
+  analogWrite(PIN_LEFT_MOTOR_SPEED, 0);
+  pinMode(PIN_LEFT_MOTOR_FORWARD, OUTPUT);
+  pinMode(PIN_LEFT_MOTOR_REVERSE, OUTPUT);
+
+  pinMode(PIN_RIGHT_MOTOR_SPEED, OUTPUT);
+  analogWrite(PIN_RIGHT_MOTOR_SPEED, 0);
+  pinMode(PIN_RIGHT_MOTOR_FORWARD, OUTPUT);
+  pinMode(PIN_RIGHT_MOTOR_REVERSE, OUTPUT);
+
+  attachInterrupt(digitalPinToInterrupt(PIN_LEFT_ENCODER), left_encoder, RISING);
+  attachInterrupt(digitalPinToInterrupt(PIN_RIGHT_ENCODER), right_encoder, RISING);
+}
+
+// ========================================== funkcje bota ==========================================
+// --------------- konfiguracja ---------------
 void KonfiguracjaRuchuSwapSilnik(bool prawy,bool lewy){
   bool zamieniono = false;
   if(lewy){
@@ -109,23 +130,88 @@ void KonfiguracjaRuchuSwapSilnik(bool prawy,bool lewy){
     ZapiszKonfiguracjeDoEEPROM();
 }
 
-void setup() {
-  Serial.begin(SERIAL_BAUD_RATE);
-  WczytajKonfiguracjeZEEPROM();
-  Serial.println("Polaczenie z Arduino jest gotowe.");
+// ------------------- funkcje ruchu i danych -------------------
+
+void Funkcja_M(int liczbaCM){
+  odpowiedzDoUzytkownika += "M{" + String(liczbaCM) + "}, ";
+}
+
+void Funkcja_R(int kat){
+  odpowiedzDoUzytkownika += "R{" + String(kat) + "}, ";
+}
+
+void Funkcja_V(int predkosc){
+  odpowiedzDoUzytkownika += "V{" + String(predkosc) + "}, ";
+}
+
+void Funkcja_T(int iloscSekund){
+  odpowiedzDoUzytkownika += "T{" + String(iloscSekund) + "}, ";
+}
+
+void Funkcja_S(){
+  odpowiedzDoUzytkownika += "S, ";
+}
+
+void Funkcja_B(){
+  odpowiedzDoUzytkownika += "B, ";
+}
+
+void Funkcja_I(){
+  odpowiedzDoUzytkownika += "I, ";
+}
+
+
+void WykonajRamke(String ramka){
+  //przykladowa ramka: {TASK, M10, R-90, V100, T5, S1, B1, I1, SK19,\n}
+  //przetwarzana ramka:  M10, R-90, V100, T5, S1, B1, I1
+  ramka.trim();
+
+  // usuń początek {TASK, i koniec ,\n} jeśli występuje
+  // if (ramka.startsWith("{TASK,")) {
+  //   ramka = ramka.substring(6); // od razu po przecinku
+  // }
+  // if (ramka.endsWith(",\n}") || ramka.endsWith(",}")) {
+  //   ramka = ramka.substring(0, ramka.length() - 3);
+  // }
+
+  int start = 0;
+  int end = ramka.indexOf(",");
   
-  pinMode(PIN_LEFT_MOTOR_SPEED, OUTPUT);
-  analogWrite(PIN_LEFT_MOTOR_SPEED, 0);
-  pinMode(PIN_LEFT_MOTOR_FORWARD, OUTPUT);
-  pinMode(PIN_LEFT_MOTOR_REVERSE, OUTPUT);
+  while (end != -1){
+    String komenda = ramka.substring(start, end);
+    komenda.trim();
 
-  pinMode(PIN_RIGHT_MOTOR_SPEED, OUTPUT);
-  analogWrite(PIN_RIGHT_MOTOR_SPEED, 0);
-  pinMode(PIN_RIGHT_MOTOR_FORWARD, OUTPUT);
-  pinMode(PIN_RIGHT_MOTOR_REVERSE, OUTPUT);
+    // wywołujemy tylko funkcję wykonującą komendę, nie dodajemy prefixu komendy
+    if (komenda.startsWith("M")) Funkcja_M(komenda.substring(1).toInt());
+    else if (komenda.startsWith("R")) Funkcja_R(komenda.substring(1).toInt());
+    else if (komenda.startsWith("V")) Funkcja_V(komenda.substring(1).toInt());
+    else if (komenda.startsWith("T")) Funkcja_T(komenda.substring(1).toInt());
+    else if (komenda.startsWith("S")) Funkcja_S();
+    else if (komenda.startsWith("B")) Funkcja_B();
+    else if (komenda.startsWith("I")) Funkcja_I();
 
-  attachInterrupt(digitalPinToInterrupt(PIN_LEFT_ENCODER), left_encoder, RISING);
-  attachInterrupt(digitalPinToInterrupt(PIN_RIGHT_ENCODER), right_encoder, RISING);
+    start = end + 1;
+    end = ramka.indexOf(",", start);
+  }
+
+  // int start = ramka.indexOf(",");
+  // int end = ramka.indexOf(",",start);
+  
+  // while (end != -1){
+  //   String komenda = ramka.substring(start,end).trim();
+  //   odpowiedzDoUzytkownika+="|"+komenda;
+
+  //   if (komenda.startsWith("M")) Funkcja_M(komenda.substring(1).toInt());
+  //   else if (komenda.startsWith("R")) Funkcja_R(komenda.substring(1).toInt());
+  //   else if (komenda.startsWith("V")) Funkcja_V(komenda.substring(1).toInt());
+  //   else if (komenda.startsWith("T")) Funkcja_T(komenda.substring(1).toInt());
+  //   else if (komenda.startsWith("S")) Funkcja_S();
+  //   else if (komenda.startsWith("B")) Funkcja_B();
+  //   else if (komenda.startsWith("I")) Funkcja_I();
+
+  //   start = end+1;
+  //   end = ramka.indexOf(",", start);
+  // }
 }
 
 //--------------------- M + V - ruch o zadana odleglosc -----------------------
@@ -160,7 +246,6 @@ void M_RuchOZadanaOdleglosc(int speed){
 }
 
 void loop() {
-  odpowiedzDoUzytkownika = "{DONE,";
   int speed = 0;
   String cmd = "";
 
@@ -208,11 +293,26 @@ void loop() {
       //todo ack cale
     }
     else{
-      //todo ramka ruchowa i reszta ramek
-      int pythonRamkaOdUzytkownika = Serial.parseInt();
-      speed = pythonRamkaOdUzytkownika;
-      M_RuchOZadanaOdleglosc(speed);
+      // int be = cmd.indexOf(",");
+      // int e = cmd.indexOf(", SK")-4;
+      // String ramkaSurowa = cmd.substring(6, e);
+      // odpowiedzDoUzytkownika += "|| ,: "+be; 
+      // odpowiedzDoUzytkownika += "||";
+      int start = cmd.indexOf(",") + 1;  // po pierwszym przecinku
+      int end = cmd.indexOf(", SK");      // przed SK
+      String ramkaSurowa = "";
+      if (start < end){
+        // {TASK, R10, SK1,\n} -> jednoelementowa ramka
+        ramkaSurowa = cmd.substring(start, end+2);
+        ramkaSurowa.trim(); // usuwa spacje
+      }
+
+      WykonajRamke(ramkaSurowa);
       Serial.println(odpowiedzDoUzytkownika);
+      //todo ramka ruchowa i reszta ramek
+      //int pythonRamkaOdUzytkownika = Serial.parseInt();
+      //speed = pythonRamkaOdUzytkownika;
+      //M_RuchOZadanaOdleglosc(speed);
     }
   }
   

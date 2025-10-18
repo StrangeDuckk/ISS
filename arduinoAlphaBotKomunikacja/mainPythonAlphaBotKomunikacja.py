@@ -113,7 +113,7 @@ def SprawdzenieAckOdArduino(arduino):
 
 def ACK_Odeslanie(arduino):
     #odeslanie drugiego ack do arduino zeby wykonalo polecenie
-    ack_ramka = "{ACK2\\n}"
+    ack_ramka = "{ACK2\n}"
     arduino.write(ack_ramka.encode())
     print("OUT| ACK2 do Arduino:", ack_ramka)
 
@@ -273,7 +273,7 @@ def PisanieRamki():
     if wykonywalnaRamka == False:
         return "p" #np ktos dal B0 tylko, takiej ramki nei oplaca sie wysylac
 
-    ramka += "SK"+SumaKontrolna(ramka)+",\\n}"
+    ramka += "SK"+SumaKontrolna(ramka)+",\n}"
     return ramka
     #todo ogarnac wszystko pod stonie arduino jako odpowiedzi
 
@@ -299,7 +299,7 @@ def KonfiguracjaSprzetu():
         ramka+="L0,"
 
     ramka+= "SK"+SumaKontrolna(ramka)
-    ramka+=",\\n}"
+    ramka+=",\n}"
     return ramka
 
 def InputUzytkownika():
@@ -332,7 +332,9 @@ try:
             print("Ta ramka nie wprowadzi zmian, pomijam.")
             continue
 
-        print(f"OUT| Wyslanie ramki do arduino:     {cmd}")
+        arduino.reset_input_buffer()
+        arduino.reset_output_buffer()
+        print(f"OUT| Wyslanie ramki do arduino:     {cmd}")#todo ladne wypisywanie /n
         arduino.write(cmd.encode())
         arduino.flush()
 

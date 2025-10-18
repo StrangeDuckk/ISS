@@ -165,6 +165,7 @@ void loop() {
   String cmd = "";
 
   if (Serial.available()){
+    while(Serial.available() > 0) Serial.read(); // czyszczenie resztek bajtów
     cmd = Serial.readStringUntil('\n');
 
     //sciagniecie ramki i podzielenie jej do walidacji

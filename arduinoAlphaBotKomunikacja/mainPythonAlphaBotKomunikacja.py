@@ -68,7 +68,7 @@ TIMEOUT_RESPONSE = 100
 
 # -------------------- otwarcie portu ------------------
 arduino = serial.Serial(PORT, BAUDRATE, timeout=1)
-time.sleep(5)  # krótka pauza na reset Arduino
+time.sleep(2)  # krótka pauza na reset Arduino
 
 # ----------------- proba polaczenia z arduino --------------
 PolacznieZArduino(arduino)
@@ -105,7 +105,7 @@ def SprawdzenieAckOdArduino(arduino):
 
 def ACK_Odeslanie(arduino):
     #odeslanie drugiego ack do arduino zeby wykonalo polecenie
-    ack_ramka = "{ACK2\n}"
+    ack_ramka = "{ACK2\\n}"
     arduino.write(ack_ramka.encode())
     print("OUT| ACK2 do Arduino:", ack_ramka)
 
@@ -115,7 +115,7 @@ def FunkcjaRobot_M():
     # ruch o m cm, + w przod, - w tyl
     cmd = ""
     while not cmd.lstrip("-").isnumeric():
-        cmd = input("Podaj o jaka odleglosc (w cm) robot ma sie przesunac (dla >0 w przod, dla <0 w tyl): ")
+        cmd = input("M| Podaj o jaka odleglosc (w cm) robot ma sie przesunac (dla >0 w przod, dla <0 w tyl): ")
     return "M"+str(cmd)+", "
 
 def FunkcjaRobot_R():
@@ -123,32 +123,47 @@ def FunkcjaRobot_R():
     # obrot o r w stopniach, + w przod, - w tyl
     cmd = ""
     while not cmd.lstrip("-").isnumeric():
-        cmd = input("Podaj o jaki kat (w stopniach) robot ma sie przesunac (dla >0 w prawo, dla <0 w lewo): ")
+        cmd = input("R| Podaj o jaki kat (w stopniach) robot ma sie przesunac (dla >0 w prawo, dla <0 w lewo): ")
     return "R"+str(cmd)+", "
 
 def FunkcjaRobot_V():
     #"| V - velocity - ustawienie predkosci liniowej bota (jedzie do momentu przeslania S - stop)\n"
     #wyslane samo, robot jedzie caly czas, bez blokowania portu do wpisania
-    cmd = ""
-    while not cmd.isnumeric() and 0 <= int(cmd) <= 256:
-        cmd = input("Podaj z jaka predkoscia robot ma jechac (>=0, <=256, w przypadku podania predkosci bez czasu, robot bedzie jechal caly czas do wyslania S): ")
-    return "V"+str(cmd)+", "
+    cmd = "0"
+    while True:
+        cmd = input("V| Podaj z jaka predkoscia robot ma jechac (>=0, <=256, w przypadku podania predkosci bez czasu, robot bedzie jechal caly czas do wyslania S): ")
+
+        if not cmd.isdigit():
+            print("!V| Podaj liczbe calkowita")
+            continue
+        if 0< int(cmd) <=255:
+            return "V"+str(cmd)+", "
+        else:
+            print("!V| Podaj liczbe z zakresu (0-256)")
     #todo po stronie arduino zgrac V,T,S
 
 def FunkcjaRobot_T():
     #"| T - czas w jakim ma odbywac sie V\n"  # wyslane samo po prostu odliczy czas
     #jesli T jest samo to puscic bo moze po prostu chciec opoznienie
     cmd = ""
-    while not cmd.isnumeric() and cmd >'0':
-        cmd = input("Podaj przez jaki czas robot ma jechac dana predkoscia a potem sie zatrzymac (0 -> pominiecie): ")
-    return "T"+str(cmd)+", "
+    while True:
+        cmd = input("T| Podaj przez jaki czas robot ma jechac dana predkoscia a potem sie zatrzymac (0 -> pominiecie): ")
+
+        if not cmd.isdigit():
+            print("!T| Podaj liczbe calkowita")
+            continue
+        if int(cmd) <= 0:
+            print("!T| Podaj liczbe > 0")
+            continue
+
+        return "T"+str(cmd)+", "
 
 def FunkcjaRobot_S():
     #"| S - stop - natychmiastowe zatrzymanie\n" #jak samo to zatrzyma V, moze isc samo
     #jesli wyslane samo to tez puscic
     cmd = ""
     while cmd not in ("0","1"):
-        cmd = input("Czy robot ma sie zatrzymac (wykonac komende S, jesli 0, komenda pominieta)? (1=Tak,0=Nie)? (1/0): ")
+        cmd = input("S| Czy robot ma sie zatrzymac (wykonac komende S, jesli 0, komenda pominieta)? (1=Tak,0=Nie)? (1/0): ")
     if cmd == "1":
         return "S1, "
     else:
@@ -158,7 +173,7 @@ def FunkcjaRobot_B():
     #"B - bierzacy odczyt sonaru w cm\n"
     cmd = ""
     while cmd not in ("0","1"):
-        cmd = input("Czy podac bierzacy odczyt z sonaru (jesli 0, komenda zostanie pomineta)? (1=Tak,0=Nie)? (1/0): ")
+        cmd = input("B| Czy podac bierzacy odczyt z sonaru (jesli 0, komenda zostanie pomineta)? (1=Tak,0=Nie)? (1/0): ")
     if cmd == "1":
         return "B1, "
     else:
@@ -168,18 +183,17 @@ def FunkcjaRobot_I():
     #"I - bierzacy odczyt czujnika IR\n"
     cmd = ""
     while cmd not in ("0","1"):
-        cmd = input("Czy podac bierzacy odczyt z czujnika (jesli 0, komenda zostanie pominieta)? (1=Tak,0=Nie)? (1/0): ")
+        cmd = input("I| Czy podac bierzacy odczyt z czujnika (jesli 0, komenda zostanie pominieta)? (1=Tak,0=Nie)? (1/0): ")
     if cmd == "1":
         return "I1, "
     else:
         return "N"
-#todo jak N to pominac
 
 def PisanieRamki():
     # przykladowa ramka: {TASK, M10, R-15, 7, /n}
     print(" -------- Pisanie Ramki do wiadomosci:------")
     print("Dostepne funkcje robota: \n"
-          "M- move - ruch o zadana odleglosc w cm (dodatnia - przod, ujemna - tyl)\n"
+          "M - move - ruch o zadana odleglosc w cm (dodatnia - przod, ujemna - tyl)\n"
           "R - rotate - obrot o zadana liczbe krokow (dodatni - prawo, ujemny - lewo)\n"
           "| V - velocity - ustawienie predkosci liniowej bota (jedzie do momentu przeslania S - stop)\n" #wyslane samo, robot jedzie caly czas 
           "| T - czas w jakim ma odbywac sie V\n" # wyslane samo po prostu odliczy czas 
@@ -251,7 +265,7 @@ def PisanieRamki():
     if wykonywalnaRamka == False:
         return "p" #np ktos dal B0 tylko, takiej ramki nei oplaca sie wysylac
 
-    ramka += SumaKontrolna(ramka)+",\n}"
+    ramka += "SK"+SumaKontrolna(ramka)+",\\n}"
     return ramka
     #todo ogarnac wszystko pod stonie arduino jako odpowiedzi
 
@@ -277,14 +291,14 @@ def KonfiguracjaSprzetu():
         ramka+="L0,"
 
     ramka+= "SK"+SumaKontrolna(ramka)
-    ramka+=",\n}"
+    ramka+=",\\n}"
     return ramka
 
 def InputUzytkownika():
     # wysyłanie danych do Arduino    Podaj predkosc (0-255) do Arduino
     cmd = input("========================================\nWpisz \nh lub p dla pomocy,\nr dla pisania ramki, \nk dla konfiguracji sprzetu,\nq zeby zakonczyc:\n")
 
-    if cmd == "q" or cmd == "quit" or cmd == "exit" or cmd == "Q":
+    if cmd.__contains__("q") or cmd.__contains__("quit") or cmd.__contains__("exit") or cmd.__contains__("Q"):
         return "q"
     elif cmd == "h" or cmd == "H" or cmd == "help" or cmd == "p" or cmd == "P":
         #todo napisac help
@@ -312,6 +326,7 @@ try:
 
         print(f"OUT| Wyslanie ramki do arduino:     {cmd}")
         arduino.write(cmd.encode())
+        arduino.flush()
 
         # --------------- 1. oczekiwanie na ACK -------------
         ack_status = SprawdzenieAckOdArduino(arduino)
@@ -349,30 +364,11 @@ finally:
     #todo uzytkownik podaje co chce wyslac literami jedna obok drugiej np mrvb
     #todo przeslanie ramki z danymi w stylu
     """
-    {
-        M15,
-        R-60,
-        V100,
-        SN, 
-        BY, 
-        IN, 
-        KonfN,
-        Num<numerWiadomosci>,
-        "/n"
-    }
-    """
-
-    """
-    ustalenie czy po uruchomieniu silnik jedzie do przodu czy do tylu, ewentualna zmiana po stornie arduino w przypadku odbioru N
-    {
-        silnik1<Forward>Y/N, 
-        silnik2<Forward>Y/N, 
-        Num<numerWiadomosci>,
-        "/n"
-    }
-    ciag dalszy numeracji wiadomosci
+    przykladowa ramka funkcyjna:
+    {TASK, M10, R-90, V100, T5, S1, B1, I1, 19,\n}
+    
+    przykladowa ramka konfiguracji sprzetu:
+    {KONFIG,R1,L0,SK1,\n}
     """
 
 #todo komenda help -> taka dokumentacja, ktora komenda robi co
-#todo zebranie danych do ramki
-#todo wysylanie ramki a nie suchej liczby

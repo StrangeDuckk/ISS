@@ -85,8 +85,8 @@ void WyslijNACK(){
   Serial.println("{NACK}");
 }
 
-void WyslijACK(int SumaWynik = 0){
-  Serial.println("{ACK,SK"+String(SumaWynik)+"}");
+void WyslijACK(){
+  Serial.println("{ACK}");
 }
 
 void KonfiguracjaRuchuSwapSilnik(bool prawy,bool lewy){
@@ -179,13 +179,15 @@ void loop() {
           WyslijNACK();
         }
         else{
-          WyslijACK(sumaKontrolnaZRamki);
+          WyslijACK();
         }
       }
       else{
         WyslijNACK();
       }
     }
+    
+
     if(cmd.indexOf("KONFIG")>=0){
       //przykladowa ramka: {KONFIG,RN,LY,<NUMER>,"\n"}
       bool swapLewy =  false;
@@ -204,15 +206,12 @@ void loop() {
       Serial.println(odpowiedzDoUzytkownika);
       //todo ack cale
     }
-    else if(cmd.indexOf("TASK")>=0){
+    else{
       //todo ramka ruchowa i reszta ramek
       int pythonRamkaOdUzytkownika = Serial.parseInt();
       speed = pythonRamkaOdUzytkownika;
       M_RuchOZadanaOdleglosc(speed);
       Serial.println(odpowiedzDoUzytkownika);
-    }
-    else{
-      Serial.println("Otrzymano nieobslugiwany format ramki: "+ cmd);
     }
   }
   

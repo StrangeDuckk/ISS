@@ -86,21 +86,29 @@ def SumaKontrolna(ramka):
 
 def SprawdzenieAckOdArduino(arduino):
     #sprawdzenie czy Arduino wyslalo otrzymalo cala ramke
-    start_time = time.time()
-    while time.time() - start_time < TIMEOUT_RESPONSE:
-        if arduino.in_waiting > 0:
-            response = arduino.readline().decode().strip()
-            if response:
-                if response.startswith("{ACK"):
-                    print("IN| Arduino, ACK:", response, " odsylam ACK2")
-                    ACK_Odeslanie(arduino)
-                    return "ACK"
-                elif response.startswith("{NACK"):
-                    print("IN| Arduino, NACK:", response)
-                    return "NACK"
-        time.sleep(0.05)
-    print("!TIMEOUT - Brak {ACK,...} od ARDUINO")
-    #todo w przypadku timeout dodatkowe proby 3
+    for proba in range(1, PONAWIANIE_LIMIT):
+        print(f"Oczekiwanie na ACK od Arduino, proba: {proba}/{PONAWIANIE_LIMIT}")
+
+        start_time = time.time()
+        while time.time() - start_time < TIMEOUT_RESPONSE:
+            if arduino.in_waiting > 0:
+                response = arduino.readline().decode().strip()
+                if response:
+                    if response.startswith("{ACK"):
+                        print("IN| Arduino, ACK:", response, " odsylam ACK2")
+                        ACK_Odeslanie(arduino)
+                        return "ACK"
+                    elif response.startswith("{NACK"):
+                        print("IN| Arduino, NACK:", response)
+                        return "NACK"
+            time.sleep(0.05)
+
+        print(f"!TIMEOUT - Brak ACK od Arduino w probie: {proba}, pozostalo prob: {PONAWIANIE_LIMIT-proba}")
+
+        if proba < PONAWIANIE_LIMIT:
+            time.sleep(0.5)
+
+    print(f"!TIMEOUT - Brak ACK od Arduino po {PONAWIANIE_LIMIT} probach")
     return "close"
 
 def ACK_Odeslanie(arduino):

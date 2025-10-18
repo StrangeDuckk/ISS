@@ -166,14 +166,6 @@ void WykonajRamke(String ramka){
   //przetwarzana ramka:  M10, R-90, V100, T5, S1, B1, I1
   ramka.trim();
 
-  // usuń początek {TASK, i koniec ,\n} jeśli występuje
-  // if (ramka.startsWith("{TASK,")) {
-  //   ramka = ramka.substring(6); // od razu po przecinku
-  // }
-  // if (ramka.endsWith(",\n}") || ramka.endsWith(",}")) {
-  //   ramka = ramka.substring(0, ramka.length() - 3);
-  // }
-
   int start = 0;
   int end = ramka.indexOf(",");
   
@@ -181,7 +173,6 @@ void WykonajRamke(String ramka){
     String komenda = ramka.substring(start, end);
     komenda.trim();
 
-    // wywołujemy tylko funkcję wykonującą komendę, nie dodajemy prefixu komendy
     if (komenda.startsWith("M")) Funkcja_M(komenda.substring(1).toInt());
     else if (komenda.startsWith("R")) Funkcja_R(komenda.substring(1).toInt());
     else if (komenda.startsWith("V")) Funkcja_V(komenda.substring(1).toInt());
@@ -193,25 +184,6 @@ void WykonajRamke(String ramka){
     start = end + 1;
     end = ramka.indexOf(",", start);
   }
-
-  // int start = ramka.indexOf(",");
-  // int end = ramka.indexOf(",",start);
-  
-  // while (end != -1){
-  //   String komenda = ramka.substring(start,end).trim();
-  //   odpowiedzDoUzytkownika+="|"+komenda;
-
-  //   if (komenda.startsWith("M")) Funkcja_M(komenda.substring(1).toInt());
-  //   else if (komenda.startsWith("R")) Funkcja_R(komenda.substring(1).toInt());
-  //   else if (komenda.startsWith("V")) Funkcja_V(komenda.substring(1).toInt());
-  //   else if (komenda.startsWith("T")) Funkcja_T(komenda.substring(1).toInt());
-  //   else if (komenda.startsWith("S")) Funkcja_S();
-  //   else if (komenda.startsWith("B")) Funkcja_B();
-  //   else if (komenda.startsWith("I")) Funkcja_I();
-
-  //   start = end+1;
-  //   end = ramka.indexOf(",", start);
-  // }
 }
 
 //--------------------- M + V - ruch o zadana odleglosc -----------------------
@@ -290,34 +262,23 @@ void loop() {
 
       odpowiedzDoUzytkownika += "}";
       Serial.println(odpowiedzDoUzytkownika);
-      //todo ack cale
     }
     else{
-      // int be = cmd.indexOf(",");
-      // int e = cmd.indexOf(", SK")-4;
-      // String ramkaSurowa = cmd.substring(6, e);
-      // odpowiedzDoUzytkownika += "|| ,: "+be; 
-      // odpowiedzDoUzytkownika += "||";
       int start = cmd.indexOf(",") + 1;  // po pierwszym przecinku
       int end = cmd.indexOf(", SK");      // przed SK
       String ramkaSurowa = "";
       if (start < end){
         // {TASK, R10, SK1,\n} -> jednoelementowa ramka
         ramkaSurowa = cmd.substring(start, end+2);
-        ramkaSurowa.trim(); // usuwa spacje
+        ramkaSurowa.trim();
       }
 
       WykonajRamke(ramkaSurowa);
+      odpowiedzDoUzytkownika.setCharAt( odpowiedzDoUzytkownika.lastIndexOf(",")  , '}');
       Serial.println(odpowiedzDoUzytkownika);
-      //todo ramka ruchowa i reszta ramek
-      //int pythonRamkaOdUzytkownika = Serial.parseInt();
-      //speed = pythonRamkaOdUzytkownika;
-      //M_RuchOZadanaOdleglosc(speed);
     }
   }
   
-  //odpowiedzDoUzytkownika+="}";
-  //Serial.println(odpowiedzDoUzytkownika);
   odpowiedzDoUzytkownika = "{DONE,"; // reset zawartości
 
   left_encoder_count=0;
@@ -326,5 +287,3 @@ void loop() {
 
 //todo S - nagle zatrzymanie dziala zawsze w przypadku wykrycia obiektu przed soba
 //sterowanie robotem, symulowane lub gotowe
-//parser ramek
-//odpowiadanie ACK i kontrolowanie liczby kontrolnej, ewentualnie podeslanie ponowne wiadomosci nieodebranej

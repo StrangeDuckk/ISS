@@ -275,7 +275,7 @@ def PisanieRamki():
 
     ramka += "SK"+SumaKontrolna(ramka)+",\n}"
     return ramka
-    #todo ogarnac wszystko pod stonie arduino jako odpowiedzi
+    #todo rozwinac odpowiedzi
 
 def KonfiguracjaSprzetu():
     #przykladowa ramka: {KONFIG,R0,L1,<sumaKONTROLNA>,"\n"}
@@ -304,11 +304,14 @@ def KonfiguracjaSprzetu():
 
 def InputUzytkownika():
     # wysyłanie danych do Arduino    Podaj predkosc (0-255) do Arduino
-    cmd = input("========================================\nWpisz \nh lub p dla pomocy,\nr dla pisania ramki, \nk dla konfiguracji sprzetu,\nq zeby zakonczyc:\n")
+    cmd = ""
+    while cmd not in ("q","Q","h","H","k","K","r","R"):
+        cmd = input("========================================\nWpisz \nh lub p dla pomocy,\nr dla pisania ramki, \nk dla konfiguracji sprzetu,\nq zeby zakonczyc:\n")
 
-    if cmd.__contains__("q") or cmd.__contains__("quit") or cmd.__contains__("exit") or cmd.__contains__("Q"):
+
+    if cmd == "q" or cmd == "Q":
         return "q"
-    elif cmd == "h" or cmd == "H" or cmd == "help" or cmd == "p" or cmd == "P":
+    elif cmd == "h" or cmd == "H":
         #todo napisac help
         print("HELP TODO DO NAPISANIA")
         return "h"
@@ -370,9 +373,6 @@ finally:
     print("Zamknieto polaczenie.")
 
 
-#todo komunikacja z uzytkownikiem
-    #todo uzytkownik podaje co chce wyslac literami jedna obok drugiej np mrvb
-    #todo przeslanie ramki z danymi w stylu
     """
     przykladowa ramka funkcyjna:
     {TASK, M10, R-90, V100, T5, S1, B1, I1, SK19,\n}
@@ -381,4 +381,4 @@ finally:
     {KONFIG,R1,L0,SK1,\n}
     """
 
-#todo komenda help -> taka dokumentacja, ktora komenda robi co
+#todo dokumentacja

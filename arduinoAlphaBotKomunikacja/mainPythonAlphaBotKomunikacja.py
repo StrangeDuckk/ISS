@@ -117,8 +117,6 @@ def FunkcjaRobot_M():
     while not cmd.lstrip("-").isnumeric():
         cmd = input("Podaj o jaka odleglosc (w cm) robot ma sie przesunac (dla >0 w przod, dla <0 w tyl): ")
     return "M"+str(cmd)+", "
-#todo jak 0 to pominac
-
 
 def FunkcjaRobot_R():
     #"R - rotate - obrot o zadana liczbe krokow (dodatni - prawo, ujemny - lewo)\n"
@@ -127,7 +125,6 @@ def FunkcjaRobot_R():
     while not cmd.lstrip("-").isnumeric():
         cmd = input("Podaj o jaki kat (w stopniach) robot ma sie przesunac (dla >0 w prawo, dla <0 w lewo): ")
     return "R"+str(cmd)+", "
-#todo jak 0 to pominac
 
 def FunkcjaRobot_V():
     #"| V - velocity - ustawienie predkosci liniowej bota (jedzie do momentu przeslania S - stop)\n"
@@ -136,17 +133,15 @@ def FunkcjaRobot_V():
     while not cmd.isnumeric() and 0 <= int(cmd) <= 256:
         cmd = input("Podaj z jaka predkoscia robot ma jechac (>=0, <=256, w przypadku podania predkosci bez czasu, robot bedzie jechal caly czas do wyslania S): ")
     return "V"+str(cmd)+", "
-#todo jak 0 to pominac
     #todo po stronie arduino zgrac V,T,S
 
 def FunkcjaRobot_T():
     #"| T - czas w jakim ma odbywac sie V\n"  # wyslane samo po prostu odliczy czas
     #jesli T jest samo to puscic bo moze po prostu chciec opoznienie
     cmd = ""
-    while not cmd.isnumeric() and cmd >='1':
-        cmd = input("Podaj przez jaki czas robot ma jechac dana predkoscia a potem sie zatrzymac (0 => pominiecie): ")
+    while not cmd.isnumeric() and cmd >'0':
+        cmd = input("Podaj przez jaki czas robot ma jechac dana predkoscia a potem sie zatrzymac (0 -> pominiecie): ")
     return "T"+str(cmd)+", "
-#todo jak 0 to pominac
 
 def FunkcjaRobot_S():
     #"| S - stop - natychmiastowe zatrzymanie\n" #jak samo to zatrzyma V, moze isc samo
@@ -158,7 +153,6 @@ def FunkcjaRobot_S():
         return "S1, "
     else:
         return "N"
-#todo jak N to pominac
 
 def FunkcjaRobot_B():
     #"B - bierzacy odczyt sonaru w cm\n"
@@ -169,7 +163,6 @@ def FunkcjaRobot_B():
         return "B1, "
     else:
         return "N"
-#todo jak N to pominac
 
 def FunkcjaRobot_I():
     #"I - bierzacy odczyt czujnika IR\n"
@@ -183,7 +176,7 @@ def FunkcjaRobot_I():
 #todo jak N to pominac
 
 def PisanieRamki():
-    # przykladowa ramka: {TASK, M10, R-15, }
+    # przykladowa ramka: {TASK, M10, R-15, 7, /n}
     print(" -------- Pisanie Ramki do wiadomosci:------")
     print("Dostepne funkcje robota: \n"
           "M- move - ruch o zadana odleglosc w cm (dodatnia - przod, ujemna - tyl)\n"
@@ -197,32 +190,66 @@ def PisanieRamki():
           "Q - zakoncz pisanie ramki")
     zadania = input("Wpisz LITERY odpowiadajace funkcjom ktorych chcesz uzyc (np. RvTSi)\n")
     ramka = "{TASK, "
-    if zadania.__contains__("Q") or zadania.__contains__("q"): #jezeli jest samo jedno todo
-        return "h" #h bo dla litery h juz i tak istnieje kontynuacja petli
+    wykonywalnaRamka = False
+    licznikKomend = 0
+    if zadania == "q" or zadania == "Q" or zadania == "" or zadania == "\n":
+        return "p"
     else:
         if zadania.__contains__("M") or zadania.__contains__("m"):
-            ramka += FunkcjaRobot_M()
+            cmd = FunkcjaRobot_M()
+            if cmd.__contains__("M0") and not wykonywalnaRamka:
+                wykonywalnaRamka = False
+            else:
+                ramka += cmd
+                wykonywalnaRamka = True
+                licznikKomend+=1
         if zadania.__contains__("R") or zadania.__contains__("r"):
-            ramka += FunkcjaRobot_R()
+            cmd = FunkcjaRobot_R()
+            if cmd.__contains__("R0") and not wykonywalnaRamka:
+                wykonywalnaRamka = False
+            else:
+                ramka += cmd
+                wykonywalnaRamka = True
+                licznikKomend+=1
         if zadania.__contains__("V") or zadania.__contains__("v"):
-            ramka += FunkcjaRobot_V()
-        if zadania.__contains__("T") or zadania.__contains__("t"):
+            cmd = FunkcjaRobot_V()
+            if cmd.__contains__("V0") and not wykonywalnaRamka:
+                wykonywalnaRamka = False
+            else:
+                ramka += cmd
+                wykonywalnaRamka = True
+                licznikKomend+=1
+        if zadania.__contains__("T") or zadania.__contains__("t"): #nie da sie wpisac 0
+            wykonywalnaRamka = True
             ramka += FunkcjaRobot_T()#jesli samo w ramce to nie pomijac
+            licznikKomend+=1
         if zadania.__contains__("S") or zadania.__contains__("s"):
-            ramka += FunkcjaRobot_S()#N - jesli N to nie wysylac i jesli samo tylko SN to przejsc do kolejnego wpisywania ramki po wypisaniu komunikatu
+            cmd = FunkcjaRobot_S()
+            if cmd == "N" and not wykonywalnaRamka:
+                wykonywalnaRamka = False
+            elif not cmd.__contains__("N"):
+                ramka += cmd
+                wykonywalnaRamka = True
+            #N - jesli N to nie wysylac i jesli samo tylko SN to przejsc do kolejnego wpisywania ramki po wypisaniu komunikatu
         if zadania.__contains__("B") or zadania.__contains__("b"):
-            ramka += FunkcjaRobot_B()#N - jesli samo tylko B to przejsc do kolejnego wpisywania ramki po wypisaniu komunikatu
+            cmd = FunkcjaRobot_B()
+            if cmd == "N" and not wykonywalnaRamka:
+                wykonywalnaRamka = False
+            elif not cmd.__contains__("N"):
+                ramka += cmd
+                wykonywalnaRamka = True
+            #N - jesli samo tylko BN to przejsc do kolejnego wpisywania ramki po wypisaniu komunikatu
         if zadania.__contains__("I") or zadania.__contains__("i"):
-            ramka += FunkcjaRobot_I()#N - jesli samo tylko B to przejsc do kolejnego wpisywania ramki po wypisaniu komunikatu
+            cmd = FunkcjaRobot_I()
+            if cmd == "N" and not wykonywalnaRamka:
+                wykonywalnaRamka = False
+            elif not cmd.__contains__("N"):
+                ramka += cmd
+                wykonywalnaRamka = True
+            #N - jesli samo tylko BN to przejsc do kolejnego wpisywania ramki po wypisaniu komunikatu
 
-
-    ##dla V: walidacja podanej predkosci:
-    #if not zadania.isdigit():
-    #    return None
-    #elif int(zadania) < 0 or int(zadania) > 255:
-    #    return None
-    #else:
-    #    return zadania
+    if wykonywalnaRamka == False:
+        return "p" #np ktos dal B0 tylko, takiej ramki nei oplaca sie wysylac
 
     ramka += SumaKontrolna(ramka)+",\n}"
     return ramka
@@ -278,6 +305,9 @@ try:
         if cmd == 'q':
             break
         if cmd == "h":
+            continue
+        if cmd == "p":
+            print("Ta ramka nie wprowadzi zmian, pomijam.")
             continue
 
         print(f"OUT| Wyslanie ramki do arduino:     {cmd}")

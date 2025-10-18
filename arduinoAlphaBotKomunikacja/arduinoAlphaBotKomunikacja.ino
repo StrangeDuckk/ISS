@@ -186,8 +186,6 @@ void loop() {
         WyslijNACK();
       }
     }
-    
-
     if(cmd.indexOf("KONFIG")>=0){
       //przykladowa ramka: {KONFIG,RN,LY,<NUMER>,"\n"}
       bool swapLewy =  false;
@@ -206,12 +204,15 @@ void loop() {
       Serial.println(odpowiedzDoUzytkownika);
       //todo ack cale
     }
-    else{
+    else if(cmd.indexOf("TASK")>=0){
       //todo ramka ruchowa i reszta ramek
       int pythonRamkaOdUzytkownika = Serial.parseInt();
       speed = pythonRamkaOdUzytkownika;
       M_RuchOZadanaOdleglosc(speed);
       Serial.println(odpowiedzDoUzytkownika);
+    }
+    else{
+      Serial.println("Otrzymano nieobslugiwany format ramki: "+ cmd);
     }
   }
   

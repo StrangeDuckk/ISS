@@ -100,6 +100,7 @@ def SprawdzenieAckOdArduino(arduino):
                     return "NACK"
         time.sleep(0.05)
     print("!TIMEOUT - Brak {ACK,...} od ARDUINO")
+    #todo w przypadku timeout dodatkowe proby 3
     return "close"
 
 def ACK_Odeslanie(arduino):
@@ -110,36 +111,76 @@ def ACK_Odeslanie(arduino):
 
 # ------------------------ funkcje robota --------------------------
 def FunkcjaRobot_M():
+    #"M- move - ruch o zadana odleglosc w cm (dodatnia - przod, ujemna - tyl)\n"
     # ruch o m cm, + w przod, - w tyl
     cmd = ""
     while not cmd.lstrip("-").isnumeric():
-        cmd = input("Podaj o jaka odleglosc (w cm) robot ma sie przesunac (dla >0 w przod, dla <0 w tyl):")
+        cmd = input("Podaj o jaka odleglosc (w cm) robot ma sie przesunac (dla >0 w przod, dla <0 w tyl): ")
     return "M"+str(cmd)+", "
+#todo jak 0 to pominac
+
 
 def FunkcjaRobot_R():
-    #todo
-    pass
+    #"R - rotate - obrot o zadana liczbe krokow (dodatni - prawo, ujemny - lewo)\n"
+    # obrot o r w stopniach, + w przod, - w tyl
+    cmd = ""
+    while not cmd.lstrip("-").isnumeric():
+        cmd = input("Podaj o jaki kat (w stopniach) robot ma sie przesunac (dla >0 w prawo, dla <0 w lewo): ")
+    return "R"+str(cmd)+", "
+#todo jak 0 to pominac
 
 def FunkcjaRobot_V():
-    #todo
-    pass
+    #"| V - velocity - ustawienie predkosci liniowej bota (jedzie do momentu przeslania S - stop)\n"
+    #wyslane samo, robot jedzie caly czas, bez blokowania portu do wpisania
+    cmd = ""
+    while not cmd.isnumeric() and 0 <= int(cmd) <= 256:
+        cmd = input("Podaj z jaka predkoscia robot ma jechac (>=0, <=256, w przypadku podania predkosci bez czasu, robot bedzie jechal caly czas do wyslania S): ")
+    return "V"+str(cmd)+", "
+#todo jak 0 to pominac
+    #todo po stronie arduino zgrac V,T,S
 
 def FunkcjaRobot_T():
-    #todo
-    pass
+    #"| T - czas w jakim ma odbywac sie V\n"  # wyslane samo po prostu odliczy czas
+    #jesli T jest samo to puscic bo moze po prostu chciec opoznienie
+    cmd = ""
+    while not cmd.isnumeric() and cmd >='1':
+        cmd = input("Podaj przez jaki czas robot ma jechac dana predkoscia a potem sie zatrzymac (0 => pominiecie): ")
+    return "T"+str(cmd)+", "
+#todo jak 0 to pominac
 
 def FunkcjaRobot_S():
-    #todo
-    pass
+    #"| S - stop - natychmiastowe zatrzymanie\n" #jak samo to zatrzyma V, moze isc samo
+    #jesli wyslane samo to tez puscic
+    cmd = ""
+    while cmd not in ("0","1"):
+        cmd = input("Czy robot ma sie zatrzymac (wykonac komende S, jesli 0, komenda pominieta)? (1=Tak,0=Nie)? (1/0): ")
+    if cmd == "1":
+        return "S1, "
+    else:
+        return "N"
+#todo jak N to pominac
 
 def FunkcjaRobot_B():
-    #todo
-    pass
+    #"B - bierzacy odczyt sonaru w cm\n"
+    cmd = ""
+    while cmd not in ("0","1"):
+        cmd = input("Czy podac bierzacy odczyt z sonaru (jesli 0, komenda zostanie pomineta)? (1=Tak,0=Nie)? (1/0): ")
+    if cmd == "1":
+        return "B1, "
+    else:
+        return "N"
+#todo jak N to pominac
 
 def FunkcjaRobot_I():
-    #todo
-    pass
-
+    #"I - bierzacy odczyt czujnika IR\n"
+    cmd = ""
+    while cmd not in ("0","1"):
+        cmd = input("Czy podac bierzacy odczyt z czujnika (jesli 0, komenda zostanie pominieta)? (1=Tak,0=Nie)? (1/0): ")
+    if cmd == "1":
+        return "I1, "
+    else:
+        return "N"
+#todo jak N to pominac
 
 def PisanieRamki():
     # przykladowa ramka: {TASK, M10, R-15, }
@@ -148,30 +189,32 @@ def PisanieRamki():
           "M- move - ruch o zadana odleglosc w cm (dodatnia - przod, ujemna - tyl)\n"
           "R - rotate - obrot o zadana liczbe krokow (dodatni - prawo, ujemny - lewo)\n"
           "| V - velocity - ustawienie predkosci liniowej bota (jedzie do momentu przeslania S - stop)\n" #wyslane samo, robot jedzie caly czas 
-          "| T - czas w jakim ma odbywac sie V\n" # wyslane samo po prostu odliczy czas #todo moze sprawdzenie czy samo
+          "| T - czas w jakim ma odbywac sie V\n" # wyslane samo po prostu odliczy czas 
           "| S - stop - natychmiastowe zatrzymanie\n" #jak samo to zatrzyma V, moze isc samo
           "(w przypadku wyslania \"V<liczba>T<liczbaSekund>S\" robot bedzie jechal przez T sekund predkoscia V a potem sie zatrzyma)\n"
           "B - bierzacy odczyt sonaru w cm\n"
           "I - bierzacy odczyt czujnika IR\n"
           "Q - zakoncz pisanie ramki")
-    zadania = input("Wpisz LITERY odpowiadajace funkcjom ktorych chcesz uzyc (np. RvTSi)")
+    zadania = input("Wpisz LITERY odpowiadajace funkcjom ktorych chcesz uzyc (np. RvTSi)\n")
     ramka = "{TASK, "
-    if zadania.__contains__("M") or zadania.__contains__("m"):
-        ramka += FunkcjaRobot_M()
-    if zadania.__contains__("R") or zadania.__contains__("r"):
-        ramka += FunkcjaRobot_R()
-    if zadania.__contains__("V") or zadania.__contains__("v"):
-        ramka += FunkcjaRobot_V()
-    if zadania.__contains__("T") or zadania.__contains__("t"):
-        ramka += FunkcjaRobot_T()#todo jak samo to pominac w ramce
-    if zadania.__contains__("S") or zadania.__contains__("s"):
-        ramka += FunkcjaRobot_S()
-    if zadania.__contains__("B") or zadania.__contains__("b"):
-        ramka += FunkcjaRobot_B()
-    if zadania.__contains__("I") or zadania.__contains__("i"):
-        ramka += FunkcjaRobot_I()
-    if zadania.__contains__("Q") or zadania.__contains__("q"):
-        pass #zostaje pass bo chcemy wrocic do opcji wybierania
+    if zadania.__contains__("Q") or zadania.__contains__("q"): #jezeli jest samo jedno todo
+        return "h" #h bo dla litery h juz i tak istnieje kontynuacja petli
+    else:
+        if zadania.__contains__("M") or zadania.__contains__("m"):
+            ramka += FunkcjaRobot_M()
+        if zadania.__contains__("R") or zadania.__contains__("r"):
+            ramka += FunkcjaRobot_R()
+        if zadania.__contains__("V") or zadania.__contains__("v"):
+            ramka += FunkcjaRobot_V()
+        if zadania.__contains__("T") or zadania.__contains__("t"):
+            ramka += FunkcjaRobot_T()#jesli samo w ramce to nie pomijac
+        if zadania.__contains__("S") or zadania.__contains__("s"):
+            ramka += FunkcjaRobot_S()#N - jesli N to nie wysylac i jesli samo tylko SN to przejsc do kolejnego wpisywania ramki po wypisaniu komunikatu
+        if zadania.__contains__("B") or zadania.__contains__("b"):
+            ramka += FunkcjaRobot_B()#N - jesli samo tylko B to przejsc do kolejnego wpisywania ramki po wypisaniu komunikatu
+        if zadania.__contains__("I") or zadania.__contains__("i"):
+            ramka += FunkcjaRobot_I()#N - jesli samo tylko B to przejsc do kolejnego wpisywania ramki po wypisaniu komunikatu
+
 
     ##dla V: walidacja podanej predkosci:
     #if not zadania.isdigit():
@@ -251,13 +294,14 @@ try:
             while True:
                 if arduino.in_waiting > 0:
                     arduinoResponse = arduino.readline().decode().strip()
-                    if arduinoResponse.startswith("{ARD"):
+                    if arduinoResponse.startswith("{DONE"):
                         print("------- Arduino odpowiedz na ramke ---------")
                         print("IN| Arduino:" , arduinoResponse)
                         break
                 time.sleep(0.05)
                 if time.time() - start_time > TIMEOUT_RESPONSE:
-                    print("!TIMEOUT - Brak odpowiedzi {ARD, ...} od Arduino.")
+                    print("!TIMEOUT - Brak odpowiedzi {DONE, ...} od Arduino.")
+                    break
 
 
         print("\n =================== Kolejna komenda ===============")

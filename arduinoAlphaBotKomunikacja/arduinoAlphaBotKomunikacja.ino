@@ -10,19 +10,6 @@ int PIN_RIGHT_MOTOR_FORWARD = A2;
 int PIN_RIGHT_MOTOR_REVERSE = A3;
 #define PIN_RIGHT_ENCODER 3
 
-//  ----------------- wciaganie konfiguracji z EEPROM --------------
-// #include <EEPROM.h>
-
-// void ZapiszKonfiguracjeDoEEPROM();
-// void WczytajKonfiguracjeZEEPROM();
-
-// struct KonfiguracjaSilnikow{
-//   int PIN_LEFT_MOTOR_FORWARD;
-//   int PIN_LEFT_MOTOR_REVERSE;
-//   int PIN_RIGHT_MOTOR_FORWARD;
-//   int PIN_RIGHT_MOTOR_REVERSE;
-//   bool zapisana;
-// };
 #include <EEPROM.h>
 
 struct KonfiguracjaSilnikow {
@@ -32,7 +19,7 @@ struct KonfiguracjaSilnikow {
   int PIN_RIGHT_MOTOR_REVERSE;
   bool initialized;
 };
-
+// ------------------- ustawianie danych z EEPROM -------------------
 #define EEPROM_ADRES_KONFIG 0
 
 KonfiguracjaSilnikow config;
@@ -55,9 +42,9 @@ void WczytajKonfiguracjeZEEPROM() {
     PIN_LEFT_MOTOR_REVERSE = config.PIN_LEFT_MOTOR_REVERSE;
     PIN_RIGHT_MOTOR_FORWARD = config.PIN_RIGHT_MOTOR_FORWARD;
     PIN_RIGHT_MOTOR_REVERSE = config.PIN_RIGHT_MOTOR_REVERSE;
-    //Serial.println("{ARD,|Wczytano konfiguracje silnikow z EEPROM|}");
+    //Serial.println("{DONE,|Wczytano konfiguracje silnikow z EEPROM|}");
   //} else {
-    //Serial.println("{ARD,|EEPROM pusty - uzyto domyslnych pinow|}");
+    //Serial.println("{DONE,|EEPROM pusty - uzyto domyslnych pinow|}");
   //}
 }
 
@@ -65,7 +52,7 @@ void WczytajKonfiguracjeZEEPROM() {
 
 #define SERIAL_BAUD_RATE 9600
 
-String odpowiedzDoUzytkownika= "{ARD,";
+String odpowiedzDoUzytkownika= "{DONE,";
 
 int left_encoder_count=0;
 int right_encoder_count=0;
@@ -173,7 +160,7 @@ void M_RuchOZadanaOdleglosc(int speed){
 }
 
 void loop() {
-  odpowiedzDoUzytkownika = "{ARD,";
+  odpowiedzDoUzytkownika = "{DONE,";
   int speed = 0;
   String cmd = "";
 
@@ -230,7 +217,7 @@ void loop() {
   
   //odpowiedzDoUzytkownika+="}";
   //Serial.println(odpowiedzDoUzytkownika);
-  odpowiedzDoUzytkownika = "{ARD,"; // reset zawartości
+  odpowiedzDoUzytkownika = "{DONE,"; // reset zawartości
 
   left_encoder_count=0;
   right_encoder_count=0;

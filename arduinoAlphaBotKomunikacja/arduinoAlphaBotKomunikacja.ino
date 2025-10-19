@@ -133,34 +133,34 @@ void KonfiguracjaRuchuSwapSilnik(bool prawy,bool lewy){
 // ------------------- funkcje ruchu i danych -------------------
 
 void Funkcja_M(int liczbaCM){
-  odpowiedzDoUzytkownika += "M{" + String(liczbaCM) + "}, ";
+  odpowiedzDoUzytkownika += "M{Bot przejechal o " + String(liczbaCM) + " cm}, ";
 }
 
 void Funkcja_R(int kat){
-  odpowiedzDoUzytkownika += "R{" + String(kat) + "}, ";
+  odpowiedzDoUzytkownika += "R{Bot obrocil sie o " + String(kat) + " stopni}, ";
 }
 
 void Funkcja_V(int predkosc){
-  odpowiedzDoUzytkownika += "V{" + String(predkosc) + "}, ";
+  odpowiedzDoUzytkownika += "V{Predkosc bota zostala ustawiona na " + String(predkosc) + "}, ";
 }
 
 void Funkcja_T(int iloscSekund){
-  odpowiedzDoUzytkownika += "T{" + String(iloscSekund) + "}, ";
+  odpowiedzDoUzytkownika += "T{Uplynelo " + String(iloscSekund) + " sekund}, ";
 }
 
 void Funkcja_S(){
-  odpowiedzDoUzytkownika += "S, ";
+  odpowiedzDoUzytkownika += "S{Bot zatrzymal sie}, ";
 }
 
 void Funkcja_B(){
-  odpowiedzDoUzytkownika += "B, ";
+  odpowiedzDoUzytkownika += "B{Odczyt z sonaru na koniec komend TODO}, ";
 }
 
 void Funkcja_I(){
-  odpowiedzDoUzytkownika += "I, ";
+  odpowiedzDoUzytkownika += "I{Odczyt z czujnika na koniec komend TODO}, ";
 }
 
-
+// ------------------ parsowanie ramki -------------------
 void WykonajRamke(String ramka){
   //przykladowa ramka: {TASK, M10, R-90, V100, T5, S1, B1, I1, SK19,\n}
   //przetwarzana ramka:  M10, R-90, V100, T5, S1, B1, I1

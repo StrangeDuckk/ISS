@@ -115,7 +115,7 @@ def ACK_Odeslanie(arduino):
     #odeslanie drugiego ack do arduino zeby wykonalo polecenie
     ack_ramka = "{ACK2\n}"
     arduino.write(ack_ramka.encode())
-    print("OUT| ACK2 do Arduino:", ack_ramka)
+    print("OUT| ACK2 do Arduino:", ack_ramka.replace("\n", "\\n"))
 
 # ------------------------ funkcje robota --------------------------
 def FunkcjaRobot_M():

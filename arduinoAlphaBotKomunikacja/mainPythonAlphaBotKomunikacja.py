@@ -2,9 +2,12 @@ import serial
 import serial.tools.list_ports
 import time
 import sys
+import threading
+import keyboard
 from Logger import Logger
 
 # pip install pyserial
+# pip install keyboard
 
 # ------------------------ funkcje laczace -------------------
 def WykrywaniePortu():
@@ -73,6 +76,28 @@ time.sleep(2)  # krótka pauza na reset Arduino
 # ----------------- proba polaczenia z arduino --------------
 PolacznieZArduino(arduino)
 
+# ---------- uruchamianie kolejkowania i osobnego watku na nasluchiwanie awaryjnego stopu --------
+emergency_stop_triggered = False
+arduino_is_working = False
+
+def ListenForStopKeyboardInterrupt(arduino):
+    global emergency_stop_triggered
+    while True:
+        if keyboard.is_pressed('s') and not emergency_stop_triggered and arduino_is_working:
+            emergency_stop_triggered = True
+            print("! AWARYJNE ZATRZYMANIE !")
+            try:
+                ramka_stop = "{TASK, S2, SK1,\n}"
+                arduino.write(ramka_stop.encode())
+                arduino.flush()
+                print("OUT| ! AWARYJNE ZATRZYMANIE !, wyslano: " + ramka_stop.replace("\n", "\\n"))
+            except Exception as e:
+                print("Blad wysylania STOP:",e)
+            time.sleep(1)
+
+stopListenerThread = threading.Thread(target=ListenForStopKeyboardInterrupt, args=(arduino,), daemon=True)
+stopListenerThread.start()
+
 # ===================================================================================================
 # ----------------- funkcje -----------------
 
@@ -139,7 +164,7 @@ def FunkcjaRobot_V():
     #wyslane samo, robot jedzie caly czas, bez blokowania portu do wpisania
     cmd = "0"
     while True:
-        cmd = input("V| Podaj z jaka predkoscia robot ma jechac (>=0, <=256, w przypadku podania predkosci bez czasu, robot bedzie jechal caly czas do wyslania S): ")
+        cmd = input("V| Podaj z jaka predkoscia robot ma jechac (>=0, <=256, tylko ustawienie predkosci): ")
 
         if not cmd.isdigit():
             print("!V| Podaj liczbe calkowita")
@@ -404,12 +429,16 @@ try:
             # ----------- 2. oczekiwanie na odpowiedz zwrotna od arduino ----------
             print("Oczekiwanie na wykonanie zadania przez Arduino...")
             start_time = time.time()
+            arduino_is_working = True
             while True:
                 if arduino.in_waiting > 0:
                     arduinoResponse = arduino.readline().decode().strip()
                     if arduinoResponse.startswith("{DONE"):
                         print("------- Arduino odpowiedz na ramke ---------")
                         print("IN| Arduino:" , arduinoResponse.replace("\n", "\\n"))
+
+                        if "Awaryjne_Zatrzymanie" in arduinoResponse:
+                            input("Nacisnij dowolny znak zeby kontynuowac")
                         break
                 time.sleep(0.05)
                 if time.time() - start_time > TIMEOUT_RESPONSE:

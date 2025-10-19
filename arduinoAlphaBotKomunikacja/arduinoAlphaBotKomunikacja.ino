@@ -19,6 +19,10 @@ struct KonfiguracjaSilnikow {
   int PIN_RIGHT_MOTOR_REVERSE;
   bool initialized;
 };
+// ------------- flgi stanu ---------------
+bool awaryjnyStop = false;
+bool wykonanieRuchu = true;
+
 // ------------------- ustawianie danych z EEPROM -------------------
 #define EEPROM_ADRES_KONFIG 0
 
@@ -111,6 +115,8 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(PIN_RIGHT_ENCODER), right_encoder, RISING);
 }
 
+
+
 // ========================================== funkcje bota ==========================================
 // --------------- konfiguracja ---------------
 void KonfiguracjaRuchuSwapSilnik(bool prawy,bool lewy){
@@ -193,13 +199,63 @@ void Funkcja_M(int liczbaCM){
   //     analogWrite(PIN_RIGHT_MOTOR_SPEED, speed);
   //   }
 
+  wykonanieRuchu = true;
+  awaryjnyStop = false;
 
+  digitalWrite(PIN_LEFT_MOTOR_FORWARD, HIGH);
+  digitalWrite(PIN_LEFT_MOTOR_REVERSE, LOW);
+  analogWrite(PIN_LEFT_MOTOR_SPEED, speed);
+
+  digitalWrite(PIN_RIGHT_MOTOR_FORWARD, LOW);
+  digitalWrite(PIN_RIGHT_MOTOR_REVERSE, HIGH);
+  analogWrite(PIN_RIGHT_MOTOR_SPEED, speed);
+
+  unsigned long start = millis();
+  while(millis()-start < 1000)
+  {
+    if(awaryjnyStop){
+      Funkcja_S(2);
+      wykonanieRuchu = false;
+      return;
+    }
+    delay(10);
+  }
+
+  Funkcja_S(0);
   odpowiedzDoUzytkownika += "M{Bot przejechal o " + String(liczbaCM) + " cm}, ";
   Funkcja_E();
+
+  wykonanieRuchu = false;
 }
 
 void Funkcja_R(int kat){
+  wykonanieRuchu = true;
+  awaryjnyStop = false;
+
+  digitalWrite(PIN_LEFT_MOTOR_FORWARD, HIGH);
+  digitalWrite(PIN_LEFT_MOTOR_REVERSE, LOW);
+  analogWrite(PIN_LEFT_MOTOR_SPEED, speed);
+
+  digitalWrite(PIN_RIGHT_MOTOR_FORWARD, LOW);
+  digitalWrite(PIN_RIGHT_MOTOR_REVERSE, HIGH);
+  analogWrite(PIN_RIGHT_MOTOR_SPEED, speed);
+  
+  unsigned long start = millis();
+  while(millis()-start < 500)
+  {
+    if(awaryjnyStop){
+      Funkcja_S(2);
+      wykonanieRuchu = false;
+      return;
+    }
+    delay(10);
+  }
+
+  Funkcja_S(0);
   odpowiedzDoUzytkownika += "R{Bot obrocil sie o " + String(kat) + " stopni}, ";
+  Funkcja_E();
+
+  wykonanieRuchu = false;
 }
 
 void Funkcja_V(int predkosc){
@@ -207,11 +263,27 @@ void Funkcja_V(int predkosc){
 }
 
 void Funkcja_T(int iloscSekund){
+  delay(iloscSekund*1000);
   odpowiedzDoUzytkownika += "T{Uplynelo " + String(iloscSekund) + " sekund}, ";
 }
 
-void Funkcja_S(){
-  odpowiedzDoUzytkownika += "S{Bot zatrzymal sie}, ";
+void Funkcja_S(int czyAwaryjnie){
+  digitalWrite(PIN_LEFT_MOTOR_FORWARD, LOW);
+  digitalWrite(PIN_LEFT_MOTOR_REVERSE, LOW);
+  analogWrite(PIN_LEFT_MOTOR_SPEED, 0);
+
+  digitalWrite(PIN_RIGHT_MOTOR_FORWARD, LOW);
+  digitalWrite(PIN_RIGHT_MOTOR_REVERSE, LOW);
+  analogWrite(PIN_RIGHT_MOTOR_SPEED, 0);
+  
+  //0 to tylko zatrzymanie bez zadnych informacji
+  if(czyAwaryjnie == 1)
+    odpowiedzDoUzytkownika += "S{Bot zatrzymal sie}, ";
+  else{  
+    awaryjnyStop = true;
+    odpowiedzDoUzytkownika = "{DONE, Awaryjne_Zatrzymanie}";
+    Serial.println(odpowiedzDoUzytkownika);
+  }
 }
 
 void Funkcja_B(){
@@ -247,7 +319,16 @@ void WykonajRamke(String ramka){
     else if (komenda.startsWith("R")) Funkcja_R(komenda.substring(1).toInt());
     else if (komenda.startsWith("V")) Funkcja_V(komenda.substring(1).toInt());
     else if (komenda.startsWith("T")) Funkcja_T(komenda.substring(1).toInt());
-    else if (komenda.startsWith("S")) Funkcja_S();
+    else if (komenda.startsWith("S")) {
+      int wartosc = komenda.substring(1).toInt();
+      if (wartosc == 2) { // STOP awaryjny
+        awaryjnyStop = true;
+        Funkcja_S(2);
+        return; 
+      } else {
+        Funkcja_S(1);
+      }
+    }
     else if (komenda.startsWith("B")) Funkcja_B();
     else if (komenda.startsWith("I")) Funkcja_I();
     else if (komenda.startsWith("E")) Funkcja_E();
@@ -365,6 +446,8 @@ void loop() {
   }
   
   odpowiedzDoUzytkownika = "{DONE,"; // reset zawartości
+  awaryjnyStop = false;//reset flag
+  wykonanieRuchu = false;//reset dla pewnosci
 
   left_encoder_count=0;
   right_encoder_count=0;

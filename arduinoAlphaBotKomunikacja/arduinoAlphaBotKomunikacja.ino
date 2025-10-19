@@ -213,6 +213,14 @@ void Funkcja_M(int liczbaCM){
   unsigned long start = millis();
   while(millis()-start < 1000)
   {
+    // Sprawdzenie awaryjnego stopu z Serial
+      if(Serial.available() > 0){
+        String cmd = Serial.readStringUntil('\n');
+        if(cmd.indexOf("S2") >= 0){ // przychodzący STOP awaryjny
+          awaryjnyStop = true;
+        }
+      }
+
     if(awaryjnyStop){
       Funkcja_S(2);
       wykonanieRuchu = false;
@@ -243,6 +251,14 @@ void Funkcja_R(int kat){
   unsigned long start = millis();
   while(millis()-start < 500)
   {
+    // Sprawdzenie awaryjnego stopu z Serial
+      if(Serial.available() > 0){
+        String cmd = Serial.readStringUntil('\n');
+        if(cmd.indexOf("S2") >= 0){ // przychodzący STOP awaryjny
+          awaryjnyStop = true;
+        }
+      }
+
     if(awaryjnyStop){
       Funkcja_S(2);
       wykonanieRuchu = false;
@@ -259,12 +275,53 @@ void Funkcja_R(int kat){
 }
 
 void Funkcja_V(int predkosc){
-  odpowiedzDoUzytkownika += "V{Predkosc bota zostala ustawiona na " + String(predkosc) + "}, ";
+  speed = predkosc;
+  odpowiedzDoUzytkownika += "V{Predkosc bota zostala ustawiona na " + String(speed) + "}, ";
 }
 
-void Funkcja_T(int iloscSekund){
-  delay(iloscSekund*1000);
-  odpowiedzDoUzytkownika += "T{Uplynelo " + String(iloscSekund) + " sekund}, ";
+void Funkcja_T(int iloscSekund, bool czyTV) {
+  if(!czyTV){
+    delay(iloscSekund*1000);
+    odpowiedzDoUzytkownika += "T{Uplynelo " + String(iloscSekund) + " sekund}, ";
+  }
+  else{
+  wykonanieRuchu = true;
+  awaryjnyStop = false;
+
+  digitalWrite(PIN_LEFT_MOTOR_FORWARD, HIGH);
+  digitalWrite(PIN_LEFT_MOTOR_REVERSE, LOW);
+  analogWrite(PIN_LEFT_MOTOR_SPEED, speed);
+
+  digitalWrite(PIN_RIGHT_MOTOR_FORWARD, LOW);
+  digitalWrite(PIN_RIGHT_MOTOR_REVERSE, HIGH);
+  analogWrite(PIN_RIGHT_MOTOR_SPEED, speed);
+
+  unsigned long start = millis();
+  while(millis()-start < iloscSekund*1000)
+  {
+      if(Serial.available() > 0){
+      String cmd = Serial.readStringUntil('\n');
+      if(cmd.indexOf("S2") >= 0){
+        Funkcja_S(2);
+        return;
+        }
+      }
+
+      if(awaryjnyStop){
+        Funkcja_S(2);
+        wykonanieRuchu = false;
+        return;
+      }
+      delay(10);
+    }
+
+    Funkcja_S(0);
+    odpowiedzDoUzytkownika += "TV{Robot poruszal sie przez " + String(iloscSekund) + " sekund predkoscia ";
+    odpowiedzDoUzytkownika += String(speed) + "}, ";
+    Funkcja_E();
+
+    wykonanieRuchu = false;
+  }
 }
 
 void Funkcja_S(int czyAwaryjnie){
@@ -279,7 +336,7 @@ void Funkcja_S(int czyAwaryjnie){
   //0 to tylko zatrzymanie bez zadnych informacji
   if(czyAwaryjnie == 1)
     odpowiedzDoUzytkownika += "S{Bot zatrzymal sie}, ";
-  else{  
+  else if(czyAwaryjnie == 2){  
     awaryjnyStop = true;
     odpowiedzDoUzytkownika = "{DONE, Awaryjne_Zatrzymanie}";
     Serial.println(odpowiedzDoUzytkownika);
@@ -310,6 +367,12 @@ void WykonajRamke(String ramka){
 
   int start = 0;
   int end = ramka.indexOf(",");
+
+  bool czyTV = false;
+
+  if (ramka.indexOf("T")>=0 && ramka.indexOf("V")>=0){
+    czyTV = true;
+  }
   
   while (end != -1){
     String komenda = ramka.substring(start, end);
@@ -318,7 +381,7 @@ void WykonajRamke(String ramka){
     if (komenda.startsWith("M")) Funkcja_M(komenda.substring(1).toInt());
     else if (komenda.startsWith("R")) Funkcja_R(komenda.substring(1).toInt());
     else if (komenda.startsWith("V")) Funkcja_V(komenda.substring(1).toInt());
-    else if (komenda.startsWith("T")) Funkcja_T(komenda.substring(1).toInt());
+    else if (komenda.startsWith("T")) Funkcja_T(komenda.substring(1).toInt(), czyTV);
     else if (komenda.startsWith("S")) {
       int wartosc = komenda.substring(1).toInt();
       if (wartosc == 2) { // STOP awaryjny

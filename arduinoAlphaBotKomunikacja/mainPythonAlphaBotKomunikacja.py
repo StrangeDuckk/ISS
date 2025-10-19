@@ -91,6 +91,7 @@ def ListenForStopKeyboardInterrupt(arduino):
                 arduino.write(ramka_stop.encode())
                 arduino.flush()
                 print("OUT| ! AWARYJNE ZATRZYMANIE !, wyslano: " + ramka_stop.replace("\n", "\\n"))
+                print("(Nacisnij dowolny przycisk aby kontynuowac)")
             except Exception as e:
                 print("Blad wysylania STOP:",e)
             time.sleep(1)
@@ -433,15 +434,17 @@ try:
             while True:
                 if arduino.in_waiting > 0:
                     arduinoResponse = arduino.readline().decode().strip()
+
                     if arduinoResponse.startswith("{DONE"):
                         print("------- Arduino odpowiedz na ramke ---------")
                         print("IN| Arduino:" , arduinoResponse.replace("\n", "\\n"))
-
+                        arduino_is_working = False
                         if "Awaryjne_Zatrzymanie" in arduinoResponse:
                             input("Nacisnij dowolny znak zeby kontynuowac")
                         break
                 time.sleep(0.05)
                 if time.time() - start_time > TIMEOUT_RESPONSE:
+                    arduino_is_working = False
                     print("!TIMEOUT - Brak odpowiedzi {DONE, ...} od Arduino.")
                     break
 

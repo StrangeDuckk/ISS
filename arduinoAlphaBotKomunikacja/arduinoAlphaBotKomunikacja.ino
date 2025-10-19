@@ -56,6 +56,9 @@ String odpowiedzDoUzytkownika= "{DONE,";
 
 int left_encoder_count=0;
 int right_encoder_count=0;
+int left_full_rotation = 20;
+int right_full_rotation = 20;
+int speed = 100;
 
 void left_encoder(){
   left_encoder_count++;  
@@ -116,24 +119,83 @@ void KonfiguracjaRuchuSwapSilnik(bool prawy,bool lewy){
     int temp = PIN_LEFT_MOTOR_REVERSE;
     PIN_LEFT_MOTOR_REVERSE = PIN_LEFT_MOTOR_FORWARD;
     PIN_LEFT_MOTOR_FORWARD = temp;
-    odpowiedzDoUzytkownika += "|odwrocono kierunek lewego silnika|";
+    odpowiedzDoUzytkownika += "|odwrocono kierunek lewego silnika|,";
     zamieniono = true;
   }
   if(prawy){
     int temp = PIN_RIGHT_MOTOR_REVERSE;
     PIN_RIGHT_MOTOR_REVERSE = PIN_RIGHT_MOTOR_FORWARD;
     PIN_RIGHT_MOTOR_FORWARD = temp;
-    odpowiedzDoUzytkownika += "|odwrocono kierunek prawego silnika|";
+    odpowiedzDoUzytkownika += "|odwrocono kierunek prawego silnika|,";
     zamieniono = true;
   }
   if (zamieniono)
     ZapiszKonfiguracjeDoEEPROM();
 }
 
+void Konfiguracja_EnkoderPelnyObrot(int prawyPelnyObrot, int lewyPelnyObrot){
+  if(prawyPelnyObrot != 0){
+    right_full_rotation = prawyPelnyObrot;
+    odpowiedzDoUzytkownika += "|nowy pelny obrot dla enkodera prawego ustawiony|,";
+  }
+  if(lewyPelnyObrot != 0){
+    left_full_rotation = prawyPelnyObrot;
+    odpowiedzDoUzytkownika += "|nowy pelny obrot dla enkodera lewego ustawiony|,";
+  }
+}
+
 // ------------------- funkcje ruchu i danych -------------------
 
 void Funkcja_M(int liczbaCM){
+  // int impulsyNaCentymetrLewy = left_full_rotation/16; // do zmiany po zmierzeniu kol rzeczywiscie, 5cm przyjete. obwod: 5*PI = 16cm
+  // int impulsyNaCentymetrPrawy = right_full_rotation/16;
+
+  // int lewyTarget = liczbaCM*impulsyNaCentymetrLewy; //do tylu impulsow na lewym kole dazymy
+  // int prawyTarget = liczbaCM*impulsyNaCentymetrPrawy;
+
+  // //tymczasowe enkodery
+  // int LeftEncoderCountTemp = 0;
+  // int RightEncoderCountTemp = 0;
+
+  // // ruszenie do przodu
+  // digitalWrite(PIN_LEFT_MOTOR_FORWARD, HIGH);
+  // digitalWrite(PIN_LEFT_MOTOR_REVERSE, LOW);
+  // analogWrite(PIN_LEFT_MOTOR_SPEED, speed);
+
+  // digitalWrite(PIN_RIGHT_MOTOR_FORWARD, LOW);
+  // digitalWrite(PIN_RIGHT_MOTOR_REVERSE, HIGH);
+  // analogWrite(PIN_RIGHT_MOTOR_SPEED, speed);
+
+  // //jazda do konkretnego dystansu
+  // while (LeftEncoderCountTemp < lewyTarget && RightEncoderCountTemp < prawyTarget){
+  //   //korekta kierunku
+  //   if (left_encoder_count > right_encoder_count) {
+  //     analogWrite(PIN_LEFT_MOTOR_SPEED, speed - 5);
+  //     analogWrite(PIN_RIGHT_MOTOR_SPEED, speed);
+  //   } else if (right_encoder_count > left_encoder_count) {
+  //     analogWrite(PIN_RIGHT_MOTOR_SPEED, speed - 5);
+  //     analogWrite(PIN_LEFT_MOTOR_SPEED, speed);
+  //   } else {
+  //     analogWrite(PIN_LEFT_MOTOR_SPEED, speed);
+  //     analogWrite(PIN_RIGHT_MOTOR_SPEED, speed);
+  //   }
+  // }
+
+  // //zatrzymanie
+  // if (left_encoder_count > right_encoder_count) {
+  //     analogWrite(PIN_LEFT_MOTOR_SPEED, speed - 5);
+  //     analogWrite(PIN_RIGHT_MOTOR_SPEED, speed);
+  //   } else if (right_encoder_count > left_encoder_count) {
+  //     analogWrite(PIN_RIGHT_MOTOR_SPEED, speed - 5);
+  //     analogWrite(PIN_LEFT_MOTOR_SPEED, speed);
+  //   } else {
+  //     analogWrite(PIN_LEFT_MOTOR_SPEED, speed);
+  //     analogWrite(PIN_RIGHT_MOTOR_SPEED, speed);
+  //   }
+
+
   odpowiedzDoUzytkownika += "M{Bot przejechal o " + String(liczbaCM) + " cm}, ";
+  Funkcja_E();
 }
 
 void Funkcja_R(int kat){
@@ -160,10 +222,18 @@ void Funkcja_I(){
   odpowiedzDoUzytkownika += "I{Odczyt z czujnika na koniec komend TODO}, ";
 }
 
+void Funkcja_E(){
+  odpowiedzDoUzytkownika += "E{Odczyt z kol na koniec: [";
+  odpowiedzDoUzytkownika += left_encoder_count;
+  odpowiedzDoUzytkownika += " , ";
+  odpowiedzDoUzytkownika += right_encoder_count;
+  odpowiedzDoUzytkownika += "]}, ";
+}
+
 // ------------------ parsowanie ramki -------------------
 void WykonajRamke(String ramka){
-  //przykladowa ramka: {TASK, M10, R-90, V100, T5, S1, B1, I1, SK19,\n}
-  //przetwarzana ramka:  M10, R-90, V100, T5, S1, B1, I1
+  //przykladowa ramka: {TASK, M10, R-90, V100, T5, S1, B1, I1, E1, SK19,\n}
+  //przetwarzana ramka:  M10, R-90, V100, T5, S1, B1, I1, E1
   ramka.trim();
 
   int start = 0;
@@ -180,6 +250,7 @@ void WykonajRamke(String ramka){
     else if (komenda.startsWith("S")) Funkcja_S();
     else if (komenda.startsWith("B")) Funkcja_B();
     else if (komenda.startsWith("I")) Funkcja_I();
+    else if (komenda.startsWith("E")) Funkcja_E();
 
     start = end + 1;
     end = ramka.indexOf(",", start);
@@ -247,18 +318,32 @@ void loop() {
     
 
     if(cmd.indexOf("KONFIG")>=0){
-      //przykladowa ramka: {KONFIG,RN,LY,<NUMER>,"\n"}
+      //przykladowa ramka: {KONFIG,RN,LY,<NUMER>,\n}
+      // przykladowa ramka: '{KONFIG,R0,L1,PE100,LE150,SK8,\n}'
       bool swapLewy =  false;
       bool swapPrawy = false;
+      int prawyEnkoderCount = 0;
+      int lewyEnkoderCount = 0;
       if(cmd.indexOf("L1")>=0)
         swapLewy = true;
       if(cmd.indexOf("R1")>=0)
         swapPrawy = true;
+      if(cmd.indexOf("PE0")<0){
+        prawyEnkoderCount = cmd.substring(cmd.indexOf("PE")+2, cmd.indexOf(",", cmd.indexOf("PE")+2)).toInt();
+      }
+      if(cmd.indexOf("LE0")<0){
+        lewyEnkoderCount = cmd.substring(cmd.indexOf("LE")+2, cmd.indexOf(",", cmd.indexOf("LE")+2)).toInt();
+      }
 
       if(swapPrawy || swapLewy)
         KonfiguracjaRuchuSwapSilnik(swapPrawy, swapLewy);
       else
         odpowiedzDoUzytkownika += "|Brak zmian w konfiguracji|,";
+
+      if(prawyEnkoderCount>0 || lewyEnkoderCount>0)
+        Konfiguracja_EnkoderPelnyObrot(prawyEnkoderCount,lewyEnkoderCount);
+      else
+        odpowiedzDoUzytkownika += "|Brak zmian w konfiguracji enkoderow|,";
 
       odpowiedzDoUzytkownika += "}";
       Serial.println(odpowiedzDoUzytkownika);

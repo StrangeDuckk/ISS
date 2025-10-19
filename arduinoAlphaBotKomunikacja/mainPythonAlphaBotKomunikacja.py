@@ -148,7 +148,6 @@ def FunkcjaRobot_V():
             return "V"+str(cmd)+", "
         else:
             print("!V| Podaj liczbe z zakresu (0-256)")
-    #todo po stronie arduino zgrac V,T,S
 
 def FunkcjaRobot_T():
     #"| T - czas w jakim ma odbywac sie V\n"  # wyslane samo po prostu odliczy czas
@@ -197,6 +196,16 @@ def FunkcjaRobot_I():
     else:
         return "N"
 
+def FunkcjaRobot_E():
+    #"I - bierzacy odczyt enkoderow w kolach\n"
+    cmd = ""
+    while cmd not in ("0","1"):
+        cmd = input("E| Czy podac bierzacy odczyt z enkoderow kol (jesli 0, komenda zostanie pominieta)? (1=Tak,0=Nie)? (1/0): ")
+    if cmd == "1":
+        return "E1, "
+    else:
+        return "N"
+
 def PisanieRamki():
     # przykladowa ramka: {TASK, M10, R-15, 7, /n}
     print(" -------- Pisanie Ramki do wiadomosci:------")
@@ -209,6 +218,7 @@ def PisanieRamki():
           "(w przypadku wyslania \"V<liczba>T<liczbaSekund>S\" robot bedzie jechal przez T sekund predkoscia V a potem sie zatrzyma)\n"
           "B - bierzacy odczyt sonaru w cm\n"
           "I - bierzacy odczyt czujnika IR\n"
+          "E - bierzacy odczyt z enkoderow kol IR\n"
           "Q - zakoncz pisanie ramki")
     zadania = input("Wpisz LITERY odpowiadajace funkcjom ktorych chcesz uzyc (np. RvTSi)\n")
     ramka = "{TASK, "
@@ -268,17 +278,25 @@ def PisanieRamki():
             elif not cmd.__contains__("N"):
                 ramka += cmd
                 wykonywalnaRamka = True
-            #N - jesli samo tylko BN to przejsc do kolejnego wpisywania ramki po wypisaniu komunikatu
+            #N - jesli samo tylko iN to przejsc do kolejnego wpisywania ramki po wypisaniu komunikatu
+        if zadania.__contains__("E") or zadania.__contains__("e"):
+            cmd = FunkcjaRobot_E()
+            if cmd == "N" and not wykonywalnaRamka:
+                wykonywalnaRamka = False
+            elif not cmd.__contains__("N"):
+                ramka += cmd
+                wykonywalnaRamka = True
+            #N - jesli samo tylko eN to przejsc do kolejnego wpisywania ramki po wypisaniu komunikatu
 
     if wykonywalnaRamka == False:
         return "p" #np ktos dal B0 tylko, takiej ramki nei oplaca sie wysylac
 
     ramka += "SK"+SumaKontrolna(ramka)+",\n}"
     return ramka
-    #todo rozwinac odpowiedzi
+    #todo dodac ruch
 
 def KonfiguracjaSprzetu():
-    #przykladowa ramka: {KONFIG,R0,L1,<sumaKONTROLNA>,"\n"}
+    #przykladowa ramka: {KONFIG, R0, L1, PE200, LE0, SK3 ,"\n"}
     print(" --------------- konfiguracja sprzetu --------------")
     ramka = "{KONFIG,"
     cmd = ""
@@ -297,6 +315,43 @@ def KonfiguracjaSprzetu():
         ramka+="L1,"
     else:
         ramka+="L0,"
+
+    cmd = ""
+    while cmd not in("1", "0"):
+        cmd = input("Czy zmienic bazowa ilosc punktow dla jednego obrotu kola PRAWEGO? (1=Tak,0=Nie)? (1/0)")
+    if cmd == "1":
+        cmd = ""
+        while True:
+            cmd = input(
+                "PE| Podaj odczyt z enkodera dla prawego kola po jednym pelnym obrocie: ")
+
+            if not cmd.isdigit():
+                print("!PE| Podaj liczbe calkowita")
+                continue
+            else:
+                ramka += "PE"+str(cmd)+","
+                break
+    else:
+        ramka+="PE0,"
+
+    cmd = ""
+    while cmd not in ("1", "0"):
+        cmd = input("Czy zmienic bazowa ilosc punktow dla jednego obrotu kola Lewego? (1=Tak,0=Nie)? (1/0)")
+    if cmd == "1":
+        cmd = ""
+        while True:
+            cmd = input(
+                "LE| Podaj odczyt z enkodera dla prawego kola po jednym pelnym obrocie: ")
+
+            if not cmd.isdigit():
+                print("!LE| Podaj liczbe calkowita")
+                continue
+            else:
+                ramka += "LE" + str(cmd)+","
+                break
+    else:
+        ramka += "LE0,"
+
 
     ramka+= "SK"+SumaKontrolna(ramka)
     ramka+=",\n}"
@@ -382,3 +437,4 @@ finally:
     """
 
 #todo dokumentacja
+#todo s w kazdym momencie do wpisania

@@ -91,7 +91,7 @@ def ListenForStopKeyboardInterrupt(arduino):
                 arduino.write(ramka_stop.encode())
                 arduino.flush()
                 print("OUT| ! AWARYJNE ZATRZYMANIE !, wyslano: " + ramka_stop.replace("\n", "\\n"))
-                print("(Nacisnij dowolny przycisk aby kontynuowac)")
+                print("(Nacisnij ENTER aby kontynuowac) $")
             except Exception as e:
                 print("Blad wysylania STOP:",e)
             time.sleep(1)
@@ -149,7 +149,7 @@ def FunkcjaRobot_M():
     # ruch o m cm, + w przod, - w tyl
     cmd = ""
     while not cmd.lstrip("-").isnumeric():
-        cmd = input("M| Podaj o jaka odleglosc (w cm) robot ma sie przesunac (dla >0 w przod, dla <0 w tyl): ")
+        cmd = input("M| Podaj o jaka odleglosc (w cm) robot ma sie przesunac (dla >0 w przod, dla <0 w tyl): $")
     return "M"+str(cmd)+", "
 
 def FunkcjaRobot_R():
@@ -157,7 +157,7 @@ def FunkcjaRobot_R():
     # obrot o r w stopniach, + w przod, - w tyl
     cmd = ""
     while not cmd.lstrip("-").isnumeric():
-        cmd = input("R| Podaj o jaki kat (w stopniach) robot ma sie przesunac (dla >0 w prawo, dla <0 w lewo): ")
+        cmd = input("R| Podaj o jaki kat (w stopniach) robot ma sie przesunac (dla >0 w prawo, dla <0 w lewo): $")
     return "R"+str(cmd)+", "
 
 def FunkcjaRobot_V():
@@ -165,7 +165,7 @@ def FunkcjaRobot_V():
     #wyslane samo, robot jedzie caly czas, bez blokowania portu do wpisania
     cmd = "0"
     while True:
-        cmd = input("V| Podaj z jaka predkoscia robot ma jechac (>=0, <=256, tylko ustawienie predkosci): ")
+        cmd = input("V| Podaj z jaka predkoscia robot ma jechac (>=0, <=256, tylko ustawienie predkosci): $")
 
         if not cmd.isdigit():
             print("!V| Podaj liczbe calkowita")
@@ -180,7 +180,7 @@ def FunkcjaRobot_T():
     #jesli T jest samo to puscic bo moze po prostu chciec opoznienie
     cmd = ""
     while True:
-        cmd = input("T| Podaj przez jaki czas robot ma jechac dana predkoscia a potem sie zatrzymac (0 -> pominiecie): ")
+        cmd = input("T| Podaj przez jaki czas robot ma jechac dana predkoscia a potem sie zatrzymac (0 -> pominiecie): $")
 
         if not cmd.isdigit():
             print("!T| Podaj liczbe calkowita")
@@ -196,7 +196,7 @@ def FunkcjaRobot_S():
     #jesli wyslane samo to tez puscic
     cmd = ""
     while cmd not in ("0","1"):
-        cmd = input("S| Czy robot ma sie zatrzymac (wykonac komende S, jesli 0, komenda pominieta)? (1=Tak,0=Nie)? (1/0): ")
+        cmd = input("S| Czy robot ma sie zatrzymac (wykonac komende S, jesli 0, komenda pominieta)? (1=Tak,0=Nie)? (1/0): $")
     if cmd == "1":
         return "S1, "
     else:
@@ -206,7 +206,7 @@ def FunkcjaRobot_B():
     #"B - bierzacy odczyt sonaru w cm\n"
     cmd = ""
     while cmd not in ("0","1"):
-        cmd = input("B| Czy podac bierzacy odczyt z sonaru (jesli 0, komenda zostanie pomineta)? (1=Tak,0=Nie)? (1/0): ")
+        cmd = input("B| Czy podac bierzacy odczyt z sonaru (jesli 0, komenda zostanie pomineta)? (1=Tak,0=Nie)? (1/0): $")
     if cmd == "1":
         return "B1, "
     else:
@@ -216,7 +216,7 @@ def FunkcjaRobot_I():
     #"I - bierzacy odczyt czujnika IR\n"
     cmd = ""
     while cmd not in ("0","1"):
-        cmd = input("I| Czy podac bierzacy odczyt z czujnika (jesli 0, komenda zostanie pominieta)? (1=Tak,0=Nie)? (1/0): ")
+        cmd = input("I| Czy podac bierzacy odczyt z czujnika (jesli 0, komenda zostanie pominieta)? (1=Tak,0=Nie)? (1/0): $")
     if cmd == "1":
         return "I1, "
     else:
@@ -226,7 +226,7 @@ def FunkcjaRobot_E():
     #"I - bierzacy odczyt enkoderow w kolach\n"
     cmd = ""
     while cmd not in ("0","1"):
-        cmd = input("E| Czy podac bierzacy odczyt z enkoderow kol (jesli 0, komenda zostanie pominieta)? (1=Tak,0=Nie)? (1/0): ")
+        cmd = input("E| Czy podac bierzacy odczyt z enkoderow kol (jesli 0, komenda zostanie pominieta)? (1=Tak,0=Nie)? (1/0): $")
     if cmd == "1":
         return "E1, "
     else:
@@ -246,7 +246,7 @@ def PisanieRamki():
           "I - bierzacy odczyt czujnika IR\n"
           "E - bierzacy odczyt z enkoderow kol IR\n"
           "Q - zakoncz pisanie ramki")
-    zadania = input("Wpisz LITERY odpowiadajace funkcjom ktorych chcesz uzyc (np. RvTSi)\n")
+    zadania = input("Wpisz LITERY odpowiadajace funkcjom ktorych chcesz uzyc (np. RvTSi)\n$")
     ramka = "{TASK, "
     wykonywalnaRamka = False
     licznikKomend = 0
@@ -326,7 +326,7 @@ def KonfiguracjaSprzetu():
     ramka = "{KONFIG,"
     cmd = ""
     while cmd not in("1", "0"):
-        cmd = input("Czy odwrocic (forward/backward) silnik prawy (1=Tak,0=Nie)? (1/0)")
+        cmd = input("Czy odwrocic (forward/backward) silnik prawy (1=Tak,0=Nie)? (1/0) $")
 
     if cmd == "1":
         ramka+="R1,"
@@ -335,7 +335,7 @@ def KonfiguracjaSprzetu():
 
     cmd = ""
     while cmd not in("1", "0"):
-        cmd = input("Czy odwrocic (forward/backward) silnik lewy? (1=Tak,0=Nie)? (1/0)")
+        cmd = input("Czy odwrocic (forward/backward) silnik lewy? (1=Tak,0=Nie)? (1/0) $")
     if cmd == "1":
         ramka+="L1,"
     else:
@@ -343,12 +343,11 @@ def KonfiguracjaSprzetu():
 
     cmd = ""
     while cmd not in("1", "0"):
-        cmd = input("Czy zmienic bazowa ilosc punktow dla jednego obrotu kola PRAWEGO? (1=Tak,0=Nie)? (1/0)")
+        cmd = input("Czy zmienic bazowa ilosc punktow dla jednego obrotu kola PRAWEGO? (1=Tak,0=Nie)? (1/0) $")
     if cmd == "1":
         cmd = ""
         while True:
-            cmd = input(
-                "PE| Podaj odczyt z enkodera dla prawego kola po jednym pelnym obrocie: ")
+            cmd = input("PE| Podaj odczyt z enkodera dla prawego kola po jednym pelnym obrocie: $")
 
             if not cmd.isdigit():
                 print("!PE| Podaj liczbe calkowita")
@@ -361,12 +360,12 @@ def KonfiguracjaSprzetu():
 
     cmd = ""
     while cmd not in ("1", "0"):
-        cmd = input("Czy zmienic bazowa ilosc punktow dla jednego obrotu kola Lewego? (1=Tak,0=Nie)? (1/0)")
+        cmd = input("Czy zmienic bazowa ilosc punktow dla jednego obrotu kola Lewego? (1=Tak,0=Nie)? (1/0) $")
     if cmd == "1":
         cmd = ""
         while True:
             cmd = input(
-                "LE| Podaj odczyt z enkodera dla prawego kola po jednym pelnym obrocie: ")
+                "LE| Podaj odczyt z enkodera dla prawego kola po jednym pelnym obrocie: $")
 
             if not cmd.isdigit():
                 print("!LE| Podaj liczbe calkowita")
@@ -416,7 +415,7 @@ def InputUzytkownika():
     # wysyłanie danych do Arduino    Podaj predkosc (0-255) do Arduino
     cmd = ""
     while cmd not in ("q","Q","h","H","k","K","r","R"):
-        cmd = input("========================================\nWpisz \nh lub p dla pomocy,\nr dla pisania ramki, \nk dla konfiguracji sprzetu,\nq zeby zakonczyc:\n")
+        cmd = input("========================================\nWpisz \nh lub p dla pomocy,\nr dla pisania ramki, \nk dla konfiguracji sprzetu,\nq zeby zakonczyc:\n$")
 
 
     if cmd == "q" or cmd == "Q":
@@ -467,7 +466,7 @@ try:
                         print("IN| Arduino:" , arduinoResponse.replace("\n", "\\n"))
                         arduino_is_working = False
                         if "Awaryjne_Zatrzymanie" in arduinoResponse:
-                            input("Nacisnij dowolny znak zeby kontynuowac")
+                            input("Nacisnij ENTER znak zeby kontynuowac")
                         break
                 time.sleep(0.05)
                 if time.time() - start_time > TIMEOUT_RESPONSE:
@@ -494,5 +493,3 @@ finally:
     przykladowa ramka konfiguracji sprzetu:
     {KONFIG,R1,L0,SK1,\n}
     """
-
-#todo dokumentacja

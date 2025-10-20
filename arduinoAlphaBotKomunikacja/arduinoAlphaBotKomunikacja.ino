@@ -402,35 +402,35 @@ void WykonajRamke(String ramka){
 }
 
 //--------------------- M + V - ruch o zadana odleglosc -----------------------
-void M_RuchOZadanaOdleglosc(int speed){
-  //todo rozdzielic V i M
+// void M_RuchOZadanaOdleglosc(int speed){
+//   //todo rozdzielic V i M
   
-  delay(500);
-  digitalWrite(PIN_LEFT_MOTOR_FORWARD, HIGH);
-  digitalWrite(PIN_LEFT_MOTOR_REVERSE, LOW);
-  analogWrite(PIN_LEFT_MOTOR_SPEED, speed);
+//   delay(500);
+//   digitalWrite(PIN_LEFT_MOTOR_FORWARD, HIGH);
+//   digitalWrite(PIN_LEFT_MOTOR_REVERSE, LOW);
+//   analogWrite(PIN_LEFT_MOTOR_SPEED, speed);
 
-  digitalWrite(PIN_RIGHT_MOTOR_FORWARD, LOW);
-  digitalWrite(PIN_RIGHT_MOTOR_REVERSE, HIGH);
-  analogWrite(PIN_RIGHT_MOTOR_SPEED, speed);
-  delay(3000);
+//   digitalWrite(PIN_RIGHT_MOTOR_FORWARD, LOW);
+//   digitalWrite(PIN_RIGHT_MOTOR_REVERSE, HIGH);
+//   analogWrite(PIN_RIGHT_MOTOR_SPEED, speed);
+//   delay(3000);
 
-  digitalWrite(PIN_LEFT_MOTOR_FORWARD, LOW);
-  digitalWrite(PIN_LEFT_MOTOR_REVERSE, LOW);
-  analogWrite(PIN_LEFT_MOTOR_SPEED, 0);
+//   digitalWrite(PIN_LEFT_MOTOR_FORWARD, LOW);
+//   digitalWrite(PIN_LEFT_MOTOR_REVERSE, LOW);
+//   analogWrite(PIN_LEFT_MOTOR_SPEED, 0);
 
-  digitalWrite(PIN_RIGHT_MOTOR_FORWARD, LOW);
-  digitalWrite(PIN_RIGHT_MOTOR_REVERSE, LOW);
-  analogWrite(PIN_RIGHT_MOTOR_SPEED, 0);
+//   digitalWrite(PIN_RIGHT_MOTOR_FORWARD, LOW);
+//   digitalWrite(PIN_RIGHT_MOTOR_REVERSE, LOW);
+//   analogWrite(PIN_RIGHT_MOTOR_SPEED, 0);
 
-  odpowiedzDoUzytkownika += "M {Wykonano ruch o ";
-  odpowiedzDoUzytkownika += speed;
-  odpowiedzDoUzytkownika += ", (odpowiedz kol: [";
-  odpowiedzDoUzytkownika += left_encoder_count;
-  odpowiedzDoUzytkownika += " ";
-  odpowiedzDoUzytkownika += right_encoder_count;
-  odpowiedzDoUzytkownika += "]}, ";
-}
+//   odpowiedzDoUzytkownika += "M {Wykonano ruch o ";
+//   odpowiedzDoUzytkownika += speed;
+//   odpowiedzDoUzytkownika += ", (odpowiedz kol: [";
+//   odpowiedzDoUzytkownika += left_encoder_count;
+//   odpowiedzDoUzytkownika += " ";
+//   odpowiedzDoUzytkownika += right_encoder_count;
+//   odpowiedzDoUzytkownika += "]}, ";
+// }
 
 void loop() {
   int speed = 0;

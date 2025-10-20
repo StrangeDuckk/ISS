@@ -281,8 +281,30 @@ void Funkcja_V(int predkosc){
 
 void Funkcja_T(int iloscSekund, bool czyTV) {
   if(!czyTV){
-    delay(iloscSekund*1000);
+    wykonanieRuchu = true;
+    awaryjnyStop = false;
+
+    unsigned long start = millis();
+    while(millis()-start < iloscSekund*1000)
+   {
+      if(Serial.available() > 0){
+      String cmd = Serial.readStringUntil('\n');
+      if(cmd.indexOf("S2") >= 0){
+        Funkcja_S(2);
+        return;
+        }
+      }
+
+      if(awaryjnyStop){
+        Funkcja_S(2);
+        wykonanieRuchu = false;
+        return;
+      }
+      delay(10);
+    }
+
     odpowiedzDoUzytkownika += "T{Uplynelo " + String(iloscSekund) + " sekund}, ";
+    wykonanieRuchu = false;
   }
   else{
   wykonanieRuchu = true;

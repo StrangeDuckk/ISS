@@ -91,16 +91,16 @@ Log z wykonania tego polecenia (input od uzytkownika znajduje sie po znaku zache
     | T - czas w jakim ma odbywac sie V
     S - stop - natychmiastowe zatrzymanie
     (w przypadku wyslania "V<liczba>T<liczbaSekund>S" robot bedzie jechal przez T sekund predkoscia V a potem sie zatrzyma)
-    B - bierzacy odczyt sonaru w cm
-    I - bierzacy odczyt czujnika IR
-    E - bierzacy odczyt z enkoderow kol IR
+    B - biezacy odczyt sonaru w cm
+    I - biezacy odczyt czujnika IR
+    E - biezacy odczyt z enkoderow kol IR
     Q - zakoncz pisanie ramki
     Wpisz LITERY odpowiadajace funkcjom ktorych chcesz uzyc (np. RvTSi)
     $mtvi
     M| Podaj o jaka odleglosc (w cm) robot ma sie przesunac (dla >0 w przod, dla <0 w tyl): $10
     V| Podaj z jaka predkoscia robot ma jechac (>=0, <=256, tylko ustawienie predkosci): $100
     T| Podaj przez jaki czas robot ma jechac dana predkoscia a potem sie zatrzymac (0 -> pominiecie): $2
-    I| Czy podac bierzacy odczyt z czujnika (jesli 0, komenda zostanie pominieta)? (1=Tak,0=Nie)? (1/0): $1
+    I| Czy podac biezacy odczyt z czujnika (jesli 0, komenda zostanie pominieta)? (1=Tak,0=Nie)? (1/0): $1
     OUT| Wyslanie ramki do arduino:     {TASK, M10, V100, T2, I1, SK5,\n}
     Oczekiwanie na ACK od Arduino, proba: 1/3
     IN| Arduino, ACK: {ACK}  odsylam ACK2
@@ -320,9 +320,9 @@ Logi z przykladowego wykonania awaryjnego stopu (podczas trwania wykonania funkc
     | T - czas w jakim ma odbywac sie V
     S - stop - natychmiastowe zatrzymanie
     (w przypadku wyslania "V<liczba>T<liczbaSekund>S" robot bedzie jechal przez T sekund predkoscia V a potem sie zatrzyma)
-    B - bierzacy odczyt sonaru w cm
-    I - bierzacy odczyt czujnika IR
-    E - bierzacy odczyt z enkoderow kol IR
+    B - biezacy odczyt sonaru w cm
+    I - biezacy odczyt czujnika IR
+    E - biezacy odczyt z enkoderow kol IR
     Q - zakoncz pisanie ramki
     Wpisz LITERY odpowiadajace funkcjom ktorych chcesz uzyc (np. RvTSi)
     $vt

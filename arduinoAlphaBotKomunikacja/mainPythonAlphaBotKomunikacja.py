@@ -237,10 +237,10 @@ def PisanieRamki():
     print(" -------- Pisanie Ramki do wiadomosci:------")
     print("Dostepne funkcje robota: \n"
           "M - move - ruch o zadana odleglosc w cm (dodatnia - przod, ujemna - tyl)\n"
-          "R - rotate - obrot o zadana liczbe krokow (dodatni - prawo, ujemny - lewo)\n"
+          "R - rotate - obrot o zadana liczbe stopni (dodatni - prawo, ujemny - lewo)\n"
           "| V - velocity - ustawienie predkosci liniowej bota (jedzie do momentu przeslania S - stop)\n" #wyslane samo, robot jedzie caly czas 
           "| T - czas w jakim ma odbywac sie V\n" # wyslane samo po prostu odliczy czas 
-          "| S - stop - natychmiastowe zatrzymanie\n" #jak samo to zatrzyma V, moze isc samo
+          "S - stop - natychmiastowe zatrzymanie\n" #jak samo to zatrzyma V, moze isc samo
           "(w przypadku wyslania \"V<liczba>T<liczbaSekund>S\" robot bedzie jechal przez T sekund predkoscia V a potem sie zatrzyma)\n"
           "B - bierzacy odczyt sonaru w cm\n"
           "I - bierzacy odczyt czujnika IR\n"
@@ -319,7 +319,6 @@ def PisanieRamki():
 
     ramka += "SK"+SumaKontrolna(ramka)+",\n}"
     return ramka
-    #todo dodac ruch
 
 def KonfiguracjaSprzetu():
     #przykladowa ramka: {KONFIG, R0, L1, PE200, LE0, SK3 ,"\n"}
@@ -383,6 +382,36 @@ def KonfiguracjaSprzetu():
     ramka+=",\n}"
     return ramka
 
+def HelpWypisywanie():
+    print("====== Alpha bot, obsluga aplikacji komunikacyjnej =====")
+    print("Dostepne ramki: \n"
+          "konfiguracyjna - konfiguracja sterowania robota, ustawienie pinow wejscia na silnikach i predkosci pelnego obrotu kola np:\n"
+          " {KONFIG, R0, L1, PE200, LE0, SK3 ,'\\n'}\n"
+          " KONFIG - typ ramki, \n"
+          " R0/L1 - czy wymina kierunku silnika prawego/lewego (1-tak,0-nie),\n"
+          " PE200/LE0 - ustawienie predkosci pelnego obrotu kola dla enkodera prawego/lewego (>0-tak, 0-bez zmian)\n"
+          "aby prawidlowo ustawic predkosc enkoderow nalezy wyslac ramke z E, nastepnie przekrecic kazde kolo o pelny obrot\n"
+          "nastepnie ponownie wyslac ramke E (tylko E) i potem ustawic w ramce konfiguracyjnej np PE20,LE19\n"
+          "\nFunkcyjna - robot wykonuje zadany zestaw funkcji, np ruch o x cm albo odczyt z czujnikow\n"
+          " {TASK, M10, R-90, V100, T5, S1, B1, I1, E1, SK20,'\\n'}"
+          " TASK - typ ramki")
+    print(" M - move - ruch o zadana odleglosc w cm (dodatnia - przod, ujemna - tyl)\n" #todo do tylu
+          " R - rotate - obrot o zadana liczbe stopni (dodatni - prawo, ujemny - lewo)\n" #todo do tylu
+          " | V - velocity - ustawienie predkosci liniowej bota (jedzie do momentu przeslania S - stop)\n"  # wyslane samo, bot ustawia predkosc
+          " | T - czas w jakim ma odbywac sie V\n"  # wyslane samo po prostu odliczy czas 
+          " (w przypadku wyslania \"V<liczba>T<liczbaSekund>S\" robot bedzie jechal przez T sekund predkoscia V a potem sie zatrzyma)\n"
+          " S - stop - natychmiastowe zatrzymanie\n"  # jak samo to zatrzyma V, moze isc samo
+          " B - bierzacy odczyt sonaru w cm\n"
+          " I - bierzacy odczyt czujnika IR\n"
+          " E - bierzacy odczyt z enkoderow kol IR\n"
+          " Q - zakoncz pisanie ramki")
+    print("SK<liczba> - suma kontrolna dla upewnienia sie dotarcia calej ramki, suma z cyfr ramki % 256")
+    print("--------------------------\nRobot ma tez opcje awaryjnego zatrzymania, po wyslaniu ramki (podczas oczekiwania na ramke {DONE,..} robota, uzytkownik moze wpisac 's'\n"
+          "nastepuje wtedy awaryjne zatrzymanie robota a Arduino odsyla specjalna ramke {DONE, Awaryjne_Zatrzymanie}\n"
+          "po akcji awaryjnego zatrzymania nalezy nacisnac dowolny przycisk aby przejsc dalej (reset bufora)")
+
+    return "h"
+
 def InputUzytkownika():
     # wysyłanie danych do Arduino    Podaj predkosc (0-255) do Arduino
     cmd = ""
@@ -393,9 +422,7 @@ def InputUzytkownika():
     if cmd == "q" or cmd == "Q":
         return "q"
     elif cmd == "h" or cmd == "H":
-        #todo napisac help
-        print("HELP TODO DO NAPISANIA")
-        return "h"
+        return HelpWypisywanie()
     elif cmd == "k" or cmd == "K" or cmd == "konf":
         return KonfiguracjaSprzetu()
     elif cmd == "r" or cmd == "R" or cmd == "ramka":
@@ -462,11 +489,10 @@ finally:
 
     """
     przykladowa ramka funkcyjna:
-    {TASK, M10, R-90, V100, T5, S1, B1, I1, SK19,\n}
+    {TASK, M10, R-90, V100, T5, S1, B1, I1, E1, SK20,\n}
     
     przykladowa ramka konfiguracji sprzetu:
     {KONFIG,R1,L0,SK1,\n}
     """
 
 #todo dokumentacja
-#todo s w kazdym momencie do wpisania

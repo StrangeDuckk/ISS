@@ -99,6 +99,15 @@ void WyslijACK(){
 void setup() {
   Serial.begin(SERIAL_BAUD_RATE);
   WczytajKonfiguracjeZEEPROM();
+
+  // Jeśli piny spoza zakresu A0–A5 lub 0–13 → użyj domyślnych
+  if (config.PIN_LEFT_MOTOR_FORWARD < 0 || config.PIN_LEFT_MOTOR_FORWARD > A5) {
+    PIN_LEFT_MOTOR_FORWARD = A0;
+    PIN_LEFT_MOTOR_REVERSE = A1;
+    PIN_RIGHT_MOTOR_FORWARD = A2;
+    PIN_RIGHT_MOTOR_REVERSE = A3;
+  }
+
   Serial.println("Polaczenie z Arduino jest gotowe.");
   
   pinMode(PIN_LEFT_MOTOR_SPEED, OUTPUT);

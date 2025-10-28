@@ -144,66 +144,73 @@ def ACK_Odeslanie(arduino):
     print("OUT| ACK2 do Arduino:", ack_ramka.replace("\n", "\\n"))
 
 # ------------------------ funkcje robota --------------------------
-def FunkcjaRobot_M():
-    #"M- move - ruch o zadana odleglosc w cm (dodatnia - przod, ujemna - tyl)\n"
-    # ruch o m cm, + w przod, - w tyl
-    cmd = ""
-    while not cmd.lstrip("-").isnumeric():
-        cmd = input("M| Podaj o jaka odleglosc (w cm) robot ma sie przesunac (dla >0 w przod, dla <0 w tyl): $")
-    return "M"+str(cmd)+", "
+#todo arduino caly czas zwraca odpis z czujnikow, komunikacje zakancza ramka {Done,..}
 
-def FunkcjaRobot_R():
-    #"R - rotate - obrot o zadana liczbe krokow (dodatni - prawo, ujemny - lewo)\n"
-    # obrot o r w stopniach, + w przod, - w tyl
+def FunkcjaPochylnia_Kp():
+    #potegowanie bledu okolo 3.0
+    #todo zrobic float
     cmd = ""
-    while not cmd.lstrip("-").isnumeric():
-        cmd = input("R| Podaj o jaki kat (w stopniach) robot ma sie przesunac (dla >0 w prawo, dla <0 w lewo): $")
-    return "R"+str(cmd)+", "
-
-def FunkcjaRobot_V():
-    #"| V - velocity - ustawienie predkosci liniowej bota (jedzie do momentu przeslania S - stop)\n"
-    #wyslane samo, robot jedzie caly czas, bez blokowania portu do wpisania
-    cmd = "0"
     while True:
-        cmd = input("V| Podaj z jaka predkoscia robot ma jechac (>=0, <=256, tylko ustawienie predkosci): $")
+        cmd = input("P| Podaj Kp - potege bledu (float, zakres: (0,10)) $")
+
+        if cmd.__contains__("q"):
+            return "q"
 
         if not cmd.isdigit():
-            print("!V| Podaj liczbe calkowita")
+            print("!P| Podaj liczbe calkowita")
             continue
-        if 0< int(cmd) <=255:
-            return "V"+str(cmd)+", "
+        if 0<= int(cmd) <=10:
+            return "P"+str(cmd)+", "
         else:
-            print("!V| Podaj liczbe z zakresu (0-256)")
+            print("!P| Podaj liczbe (float) z zakresu (0-10)")
 
-def FunkcjaRobot_T():
-    #"| T - czas w jakim ma odbywac sie V\n"  # wyslane samo po prostu odliczy czas
-    #jesli T jest samo to puscic bo moze po prostu chciec opoznienie
+    return "Kp"+str(cmd)+", "
+
+def FunkcjaPochylnia_Ki():
+    #zapis historyczny bledu okolo 0.5
+    #todo zrobic float
     cmd = ""
     while True:
-        cmd = input("T| Podaj przez jaki czas robot ma jechac dana predkoscia a potem sie zatrzymac (0 -> pominiecie): $")
+        cmd = input("I| Podaj Ki - potege bledu (float, zakres: (0,10)) $")
+
+        if cmd.__contains__("q"):
+            return "q"
 
         if not cmd.isdigit():
-            print("!T| Podaj liczbe calkowita")
+            print("!I| Podaj liczbe calkowita")
             continue
-        if int(cmd) <= 0:
-            print("!T| Podaj liczbe > 0")
-            continue
+        if 0<= int(cmd) <=10:
+            return "I"+str(cmd)+", "
+        else:
+            print("!I| Podaj liczbe (float) z zakresu (0-10)")
 
-        return "T"+str(cmd)+", "
+    return "Ki"+str(cmd)+", "
 
-def FunkcjaRobot_S():
-    #"| S - stop - natychmiastowe zatrzymanie\n" #jak samo to zatrzyma V, moze isc samo
-    #jesli wyslane samo to tez puscic
+
+def FunkcjaPochylnia_Kd():
+    # zapis historyczny bledu okolo 0.5
+    # todo zrobic float
     cmd = ""
-    while cmd not in ("0","1"):
-        cmd = input("S| Czy robot ma sie zatrzymac (wykonac komende S, jesli 0, komenda pominieta)? (1=Tak,0=Nie)? (1/0): $")
-    if cmd == "1":
-        return "S1, "
-    else:
-        return "N"
+    while True:
+        cmd = input("D| Podaj Kd - potege roznicy pomiedzy bledami, jak szybko ma sie 'poprawic' (float, zakres: (0,10)) $")
 
-def FunkcjaRobot_B():
-    #"B - bierzacy odczyt sonaru w cm\n"
+        if cmd.__contains__("q"):
+            return "q"
+
+        if not cmd.isdigit():
+            print("!D| Podaj liczbe calkowita")
+            continue
+        if 0 <= int(cmd) <= 10:
+            return "D" + str(cmd) + ", "
+        else:
+            print("!D| Podaj liczbe (float) z zakresu (0-10)")
+
+    return "Ki" + str(cmd) + ", "
+
+def FunkcjaPochylnia_B():
+    #pobranie obecnej odleglosci z czujnika przeliczone na cm
+    #todo przeliczenie na cm
+    #todo zwrot jako cm i jako rzeczywista wartosc
     cmd = ""
     while cmd not in ("0","1"):
         cmd = input("B| Czy podac bierzacy odczyt z sonaru (jesli 0, komenda zostanie pomineta)? (1=Tak,0=Nie)? (1/0): $")
@@ -212,39 +219,79 @@ def FunkcjaRobot_B():
     else:
         return "N"
 
-def FunkcjaRobot_I():
-    #"I - bierzacy odczyt czujnika IR\n"
-    cmd = ""
-    while cmd not in ("0","1"):
-        cmd = input("I| Czy podac bierzacy odczyt z czujnika (jesli 0, komenda zostanie pominieta)? (1=Tak,0=Nie)? (1/0): $")
-    if cmd == "1":
-        return "I1, "
-    else:
-        return "N"
+def FunkcjaPochylnia_C():
+#ustawienie zadanej odleglosci jako target
+#todo zeby dzialalo dla float
+    while True:
+        cmd = input(
+            "C| Podaj docelowa odleglosc kulki od czujnika (uzyj funkcji B jednoczesnie trzymajac kulke w oczekiwanej pozycji koncowej) (10,30) $")
 
-def FunkcjaRobot_E():
-    #"I - bierzacy odczyt enkoderow w kolach\n"
-    cmd = ""
-    while cmd not in ("0","1"):
-        cmd = input("E| Czy podac bierzacy odczyt z enkoderow kol (jesli 0, komenda zostanie pominieta)? (1=Tak,0=Nie)? (1/0): $")
-    if cmd == "1":
-        return "E1, "
-    else:
-        return "N"
+        if cmd.__contains__("q"):
+            return "q"
+
+        if not cmd.isnumeric():
+            print("!C| Podaj liczbe")
+            continue
+        if 0 <= int(cmd) <= 10:
+            return "C" + str(cmd) + ", "
+        else:
+            print("!C| Podaj liczbe (float) z zakresu (10-30)")
+
+    return "C" + str(cmd) + ", "
+
+def FunkcjaPochylnia_E():
+#ustawienie wartosci 0 dla serwo z ograniczeniem zakresow serwa
+    while True:
+        cmd = input(
+            "E| Podaj pozycje 0 dla serwa (kat od 0 do 180*) $")
+
+        if cmd.__contains__("q"):
+            return "q"
+
+        if not cmd.isdigit():
+            print("!C| Podaj liczbe")
+            continue
+        if 0 <= int(cmd) <= 180:#todo jesli serwo 360 zmienic zakres
+            return "C" + str(cmd) + ", "
+        else:
+            print("!C| Podaj liczbe (float) z zakresu (0-180)")
+
+    return "C" + str(cmd) + ", "
+
+# def FunkcjaRobot_V():
+#     #"| V - velocity - ustawienie predkosci liniowej bota (jedzie do momentu przeslania S - stop)\n"
+#     #wyslane samo, robot jedzie caly czas, bez blokowania portu do wpisania
+#     cmd = "0"
+#     while True:
+#         cmd = input("V| Podaj z jaka predkoscia robot ma jechac (>=0, <=256, tylko ustawienie predkosci): $")
+#
+#         if not cmd.isdigit():
+#             print("!V| Podaj liczbe calkowita")
+#             continue
+#         if 0< int(cmd) <=255:
+#             return "V"+str(cmd)+", "
+#         else:
+#             print("!V| Podaj liczbe z zakresu (0-256)")
+
+# def FunkcjaRobot_B():
+#     #"B - bierzacy odczyt sonaru w cm\n"
+#     cmd = ""
+#     while cmd not in ("0","1"):
+#         cmd = input("B| Czy podac bierzacy odczyt z sonaru (jesli 0, komenda zostanie pomineta)? (1=Tak,0=Nie)? (1/0): $")
+#     if cmd == "1":
+#         return "B1, "
+#     else:
+#         return "N"
 
 def PisanieRamki():
     # przykladowa ramka: {TASK, M10, R-15, 7, /n}
     print(" -------- Pisanie Ramki do wiadomosci:------")
     print("Dostepne funkcje robota: \n"
-          "M - move - ruch o zadana odleglosc w cm (dodatnia - przod, ujemna - tyl)\n"
-          "R - rotate - obrot o zadana liczbe stopni (dodatni - prawo, ujemny - lewo)\n"
-          "| V - velocity - ustawienie predkosci liniowej bota (jedzie do momentu przeslania S - stop)\n" #wyslane samo, robot jedzie caly czas 
-          "| T - czas w jakim ma odbywac sie V\n" # wyslane samo po prostu odliczy czas 
-          "S - stop - natychmiastowe zatrzymanie\n" #jak samo to zatrzyma V, moze isc samo
-          "(w przypadku wyslania \"V<liczba>T<liczbaSekund>S\" robot bedzie jechal przez T sekund predkoscia V a potem sie zatrzyma)\n"
-          "B - bierzacy odczyt sonaru w cm\n"
-          "I - bierzacy odczyt czujnika IR\n"
-          "E - bierzacy odczyt z enkoderow kol IR\n"
+          "P - Kp -> potegowanie bledu (0,10)\n"
+          "I - Ki -> ilosc zapisy historycznego bledu (0,10)\n"
+          "D - Kd -> potegowanie roznicy pomiedzy ostatnim a obecnym bledem, jak szybko ma reagowac (0,10)\n"
+          "B -> odczytanie bierzacej odleglosci z sonaru (1 - tak, 0 - pominiecie)\n"
+          "C -> ustawienie docelowej odleglosci pilki od sonaru, zalecane, uzyc najpierw B i przepisac wartosc (10,30)\n"
           "Q - zakoncz pisanie ramki")
     zadania = input("Wpisz LITERY odpowiadajace funkcjom ktorych chcesz uzyc (np. RvTSi)\n$")
     ramka = "{TASK, "
@@ -253,66 +300,55 @@ def PisanieRamki():
     if zadania == "q" or zadania == "Q" or zadania == "" or zadania == "\n":
         return "p"
     else:
-        if zadania.__contains__("M") or zadania.__contains__("m"):
-            cmd = FunkcjaRobot_M()
-            if cmd.__contains__("M0") and not wykonywalnaRamka:
+        if zadania.__contains__("P") or zadania.__contains__("p"):
+            cmd = FunkcjaPochylnia_Kp()
+            if cmd.__contains__("q") and not wykonywalnaRamka:
                 wykonywalnaRamka = False
             else:
                 ramka += cmd
                 wykonywalnaRamka = True
                 licznikKomend+=1
-        if zadania.__contains__("R") or zadania.__contains__("r"):
-            cmd = FunkcjaRobot_R()
-            if cmd.__contains__("R0") and not wykonywalnaRamka:
-                wykonywalnaRamka = False
-            else:
-                ramka += cmd
-                wykonywalnaRamka = True
-                licznikKomend+=1
-        if zadania.__contains__("V") or zadania.__contains__("v"):
-            cmd = FunkcjaRobot_V()
-            if cmd.__contains__("V0") and not wykonywalnaRamka:
-                wykonywalnaRamka = False
-            else:
-                ramka += cmd
-                wykonywalnaRamka = True
-                licznikKomend+=1
-        if zadania.__contains__("T") or zadania.__contains__("t"): #nie da sie wpisac 0
-            wykonywalnaRamka = True
-            ramka += FunkcjaRobot_T()#jesli samo w ramce to nie pomijac
-            licznikKomend+=1
-        if zadania.__contains__("S") or zadania.__contains__("s"):
-            cmd = FunkcjaRobot_S()
-            if cmd == "N" and not wykonywalnaRamka:
-                wykonywalnaRamka = False
-            elif not cmd.__contains__("N"):
-                ramka += cmd
-                wykonywalnaRamka = True
-            #N - jesli N to nie wysylac i jesli samo tylko SN to przejsc do kolejnego wpisywania ramki po wypisaniu komunikatu
-        if zadania.__contains__("B") or zadania.__contains__("b"):
-            cmd = FunkcjaRobot_B()
-            if cmd == "N" and not wykonywalnaRamka:
-                wykonywalnaRamka = False
-            elif not cmd.__contains__("N"):
-                ramka += cmd
-                wykonywalnaRamka = True
-            #N - jesli samo tylko BN to przejsc do kolejnego wpisywania ramki po wypisaniu komunikatu
         if zadania.__contains__("I") or zadania.__contains__("i"):
-            cmd = FunkcjaRobot_I()
-            if cmd == "N" and not wykonywalnaRamka:
+            cmd = FunkcjaPochylnia_Ki()
+            if cmd.__contains__("q") and not wykonywalnaRamka:
                 wykonywalnaRamka = False
-            elif not cmd.__contains__("N"):
+            else:
                 ramka += cmd
                 wykonywalnaRamka = True
-            #N - jesli samo tylko iN to przejsc do kolejnego wpisywania ramki po wypisaniu komunikatu
+                licznikKomend+=1
+        if zadania.__contains__("D") or zadania.__contains__("d"):
+            cmd = FunkcjaPochylnia_Kd()
+            if cmd.__contains__("q") and not wykonywalnaRamka:
+                wykonywalnaRamka = False
+            else:
+                ramka += cmd
+                wykonywalnaRamka = True
+                licznikKomend+=1
         if zadania.__contains__("E") or zadania.__contains__("e"):
-            cmd = FunkcjaRobot_E()
+            cmd = FunkcjaPochylnia_C()
+            if cmd.__contains__("q") and not wykonywalnaRamka:
+                wykonywalnaRamka = False
+            else:
+                ramka += cmd
+                wykonywalnaRamka = True
+                licznikKomend+=1
+        if zadania.__contains__("B") or zadania.__contains__("b"):
+            cmd = FunkcjaPochylnia_B()
             if cmd == "N" and not wykonywalnaRamka:
                 wykonywalnaRamka = False
             elif not cmd.__contains__("N"):
                 ramka += cmd
                 wykonywalnaRamka = True
-            #N - jesli samo tylko eN to przejsc do kolejnego wpisywania ramki po wypisaniu komunikatu
+            # N - jesli samo tylko BN to przejsc do kolejnego wpisywania ramki po wypisaniu komunikatu
+        if zadania.__contains__("C") or zadania.__contains__("c"):
+            #todo jesli uzyte B w tej samej ramce, ustawienie automatyczne
+            cmd = FunkcjaPochylnia_C()
+            if cmd.__contains__("q") and not wykonywalnaRamka:
+                wykonywalnaRamka = False
+            else:
+                ramka += cmd
+                wykonywalnaRamka = True
+                licznikKomend+=1
 
     if wykonywalnaRamka == False:
         return "p" #np ktos dal B0 tylko, takiej ramki nei oplaca sie wysylac
@@ -320,6 +356,23 @@ def PisanieRamki():
     ramka += "SK"+SumaKontrolna(ramka)+",\n}"
     return ramka
 
+#TODO KONFIGURACJA JAKO TRYB ZALICZENIOWY
+#todo funkcja -> uruchomienie trybu zaliczeniowego, bez zmian czujnikow komenda START
+"""
+Tryb zaliczeniowy: system zaczyna od pozycji lekko pochylonej w stronę czujnika, tak aby kulka zsunęła się do czujnika, min. 10 sekund lub dalsza część po komendzie;
+po wydaniu komendy regulator ma:
+■ w ≤ 10 s ustawić kulkę na TARGET,
+■ następnie przez 3 s logować błąd i obliczyć średnią z modułu błędu bezwzględnego,
+■ wypisać wynik zaokrąglony do dwóch miejsc po przecinku i zakończyć sterowanie.
+
+Procedura oddania / test zaliczeniowy
+1. Kalibracja (poza oceną).
+2. Start: egzaminator wydaje START przy pochylni lekko przechylonej w stronę czujnika.
+3. Faza 1 (≤ 10 s): kulka ma dotrzeć i ustalić się na TARGET.
+4. Faza 2 (3 s): system liczy MAE:
+○ MAE = średnia z |błąd próbkowania| co ten sam okres, co pętla PID.
+5. Punkt zero (TARGET): ogłoszony indywidualnie dla konkretnego stanowiska (sprzętu). Jeżeli system nie osiągnie i nie utrzyma celu w 10 s (oczywiste rozbujanie/niestabilność), część „wynikowa” (10 pkt) = 0
+"""
 def KonfiguracjaSprzetu():
     #przykladowa ramka: {KONFIG, R0, L1, PE200, LE0, SK3 ,"\n"}
     print(" --------------- konfiguracja sprzetu --------------")
@@ -382,7 +435,9 @@ def KonfiguracjaSprzetu():
     return ramka
 
 def HelpWypisywanie():
+    #todo napisac H od nowa
     print("====== Alpha bot, obsluga aplikacji komunikacyjnej =====")
+    print("= tryb testowy jest domyslnym trybem =")
     print("Dostepne ramki: \n"
           "konfiguracyjna - konfiguracja sterowania robota, ustawienie pinow wejscia na silnikach i predkosci pelnego obrotu kola np:\n"
           " {KONFIG, R0, L1, PE200, LE0, SK3 ,'\\n'}\n"
@@ -394,8 +449,8 @@ def HelpWypisywanie():
           "\nFunkcyjna - robot wykonuje zadany zestaw funkcji, np ruch o x cm albo odczyt z czujnikow\n"
           " {TASK, M10, R-90, V100, T5, S1, B1, I1, E1, SK20,'\\n'}"
           " TASK - typ ramki")
-    print(" M - move - ruch o zadana odleglosc w cm (dodatnia - przod, ujemna - tyl)\n" #todo do tylu
-          " R - rotate - obrot o zadana liczbe stopni (dodatni - prawo, ujemny - lewo)\n" #todo do tylu
+    print(" M - move - ruch o zadana odleglosc w cm (dodatnia - przod, ujemna - tyl)\n"
+          " R - rotate - obrot o zadana liczbe stopni (dodatni - prawo, ujemny - lewo)\n"
           " | V - velocity - ustawienie predkosci liniowej bota (jedzie do momentu przeslania S - stop)\n"  # wyslane samo, bot ustawia predkosc
           " | T - czas w jakim ma odbywac sie V\n"  # wyslane samo po prostu odliczy czas 
           " (w przypadku wyslania \"V<liczba>T<liczbaSekund>S\" robot bedzie jechal przez T sekund predkoscia V a potem sie zatrzyma)\n"
@@ -414,7 +469,7 @@ def HelpWypisywanie():
 def InputUzytkownika():
     # wysyłanie danych do Arduino    Podaj predkosc (0-255) do Arduino
     cmd = ""
-    while cmd not in ("q","Q","h","H","k","K","r","R"):
+    while cmd not in ("q","Q","h","H","s","S","r","R"):
         cmd = input("========================================\nWpisz \nh lub p dla pomocy,\nr dla pisania ramki, \nk dla konfiguracji sprzetu,\nq zeby zakonczyc:\n$")
 
 
@@ -422,7 +477,7 @@ def InputUzytkownika():
         return "q"
     elif cmd == "h" or cmd == "H":
         return HelpWypisywanie()
-    elif cmd == "k" or cmd == "K" or cmd == "konf":
+    elif cmd == "s" or cmd == "S" or cmd == "konf":
         return KonfiguracjaSprzetu()
     elif cmd == "r" or cmd == "R" or cmd == "ramka":
         return PisanieRamki()

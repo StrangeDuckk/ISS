@@ -148,7 +148,6 @@ def ACK_Odeslanie(arduino):
 
 def FunkcjaPochylnia_Kp():
     #potegowanie bledu okolo 3.0
-    #todo zrobic float
     cmd = ""
     while True:
         cmd = input("P| Podaj Kp - potege bledu (float, zakres: (0,10)) $")
@@ -156,19 +155,21 @@ def FunkcjaPochylnia_Kp():
         if cmd.__contains__("q"):
             return "q"
 
-        if not cmd.isdigit():
-            print("!P| Podaj liczbe calkowita")
+        try:
+            val = float(cmd)  # próba konwersji na float
+        except ValueError:
+            print("!P| Podaj liczbę (float)")
             continue
-        if 0<= int(cmd) <=10:
-            return "P"+str(cmd)+", "
-        else:
-            print("!P| Podaj liczbe (float) z zakresu (0-10)")
 
-    return "Kp"+str(cmd)+", "
+        if 0 <= val <= 10:
+            # zaokraglenie do dwoch miejsc po przecinku
+            return f"P{val:.2f}, "
+        else:
+            print("!P| Podaj liczbę (float) z zakresu (0-10)")
+
 
 def FunkcjaPochylnia_Ki():
     #zapis historyczny bledu okolo 0.5
-    #todo zrobic float
     cmd = ""
     while True:
         cmd = input("I| Podaj Ki - potege bledu (float, zakres: (0,10)) $")
@@ -176,20 +177,21 @@ def FunkcjaPochylnia_Ki():
         if cmd.__contains__("q"):
             return "q"
 
-        if not cmd.isdigit():
-            print("!I| Podaj liczbe calkowita")
+        try:
+            val = float(cmd)  # próba konwersji na float
+        except ValueError:
+            print("!I| Podaj liczbę (float)")
             continue
-        if 0<= int(cmd) <=10:
-            return "I"+str(cmd)+", "
-        else:
-            print("!I| Podaj liczbe (float) z zakresu (0-10)")
 
-    return "Ki"+str(cmd)+", "
+        if 0 <= val <= 10:
+            # zaokraglenie do dwoch miejsc po przecinku
+            return f"I{val:.2f}, "
+        else:
+            print("!I| Podaj liczbę (float) z zakresu (0-10)")
 
 
 def FunkcjaPochylnia_Kd():
     # zapis historyczny bledu okolo 0.5
-    # todo zrobic float
     cmd = ""
     while True:
         cmd = input("D| Podaj Kd - potege roznicy pomiedzy bledami, jak szybko ma sie 'poprawic' (float, zakres: (0,10)) $")
@@ -197,15 +199,17 @@ def FunkcjaPochylnia_Kd():
         if cmd.__contains__("q"):
             return "q"
 
-        if not cmd.isdigit():
-            print("!D| Podaj liczbe calkowita")
+        try:
+            val = float(cmd)  # próba konwersji na float
+        except ValueError:
+            print("!D| Podaj liczbę (float)")
             continue
-        if 0 <= int(cmd) <= 10:
-            return "D" + str(cmd) + ", "
-        else:
-            print("!D| Podaj liczbe (float) z zakresu (0-10)")
 
-    return "Ki" + str(cmd) + ", "
+        if 0 <= val <= 10:
+            # zaokraglenie do dwoch miejsc po przecinku
+            return f"D{val:.2f}, "
+        else:
+            print("!D| Podaj liczbę (float) z zakresu (0-10)")
 
 def FunkcjaPochylnia_B():
     #pobranie obecnej odleglosci z czujnika przeliczone na cm
@@ -219,9 +223,12 @@ def FunkcjaPochylnia_B():
     else:
         return "N"
 
+def FunkcjaPochylnia_A():
+    #automatyczne pobieranie odleglosci z B i wstawianie jej jako output do C
+    return "C"+str(17) #todo automatycznie pobieranie B instant i wysylanie w ramce C
+
 def FunkcjaPochylnia_C():
 #ustawienie zadanej odleglosci jako target
-#todo zeby dzialalo dla float
     while True:
         cmd = input(
             "C| Podaj docelowa odleglosc kulki od czujnika (uzyj funkcji B jednoczesnie trzymajac kulke w oczekiwanej pozycji koncowej) (10,30) $")
@@ -229,15 +236,17 @@ def FunkcjaPochylnia_C():
         if cmd.__contains__("q"):
             return "q"
 
-        if not cmd.isnumeric():
-            print("!C| Podaj liczbe")
+        try:
+            val = float(cmd)  # próba konwersji na float
+        except ValueError:
+            print("!C| Podaj liczbę (float)")
             continue
-        if 0 <= int(cmd) <= 10:
-            return "C" + str(cmd) + ", "
-        else:
-            print("!C| Podaj liczbe (float) z zakresu (10-30)")
 
-    return "C" + str(cmd) + ", "
+        if 10 <= val <= 30:
+            # zaokraglenie do dwoch miejsc po przecinku
+            return f"C{val:.2f}, "
+        else:
+            print("!C| Podaj liczbę (float) z zakresu (10-30)")
 
 def FunkcjaPochylnia_E():
 #ustawienie wartosci 0 dla serwo z ograniczeniem zakresow serwa
@@ -254,34 +263,28 @@ def FunkcjaPochylnia_E():
         if 0 <= int(cmd) <= 180:#todo jesli serwo 360 zmienic zakres
             return "C" + str(cmd) + ", "
         else:
-            print("!C| Podaj liczbe (float) z zakresu (0-180)")
+            print("!C| Podaj liczbe calkowita z zakresu (0-180)")
 
-    return "C" + str(cmd) + ", "
+    return "E" + str(cmd) + ", "
 
-# def FunkcjaRobot_V():
-#     #"| V - velocity - ustawienie predkosci liniowej bota (jedzie do momentu przeslania S - stop)\n"
-#     #wyslane samo, robot jedzie caly czas, bez blokowania portu do wpisania
-#     cmd = "0"
-#     while True:
-#         cmd = input("V| Podaj z jaka predkoscia robot ma jechac (>=0, <=256, tylko ustawienie predkosci): $")
-#
-#         if not cmd.isdigit():
-#             print("!V| Podaj liczbe calkowita")
-#             continue
-#         if 0< int(cmd) <=255:
-#             return "V"+str(cmd)+", "
-#         else:
-#             print("!V| Podaj liczbe z zakresu (0-256)")
+def FunkcjaPochylnia_T():
+#ustawienie zadanej odleglosci jako target
+    while True:
+        cmd = input(
+            "T| Podaj czas ile milisekund ma trwac jedno przejscie petli (100,200) $")
 
-# def FunkcjaRobot_B():
-#     #"B - bierzacy odczyt sonaru w cm\n"
-#     cmd = ""
-#     while cmd not in ("0","1"):
-#         cmd = input("B| Czy podac bierzacy odczyt z sonaru (jesli 0, komenda zostanie pomineta)? (1=Tak,0=Nie)? (1/0): $")
-#     if cmd == "1":
-#         return "B1, "
-#     else:
-#         return "N"
+        if cmd.__contains__("q"):
+            return "q"
+
+        if not cmd.isnumeric():
+            print("!T| Podaj liczbe")
+            continue
+        if 100 <= int(cmd) <= 200:
+            return "T" + str(cmd) + ", "
+        else:
+            print("!T| Podaj liczbe calkowita z zakresu (100-200)")
+
+    return "T" + str(cmd) + ", "
 
 def PisanieRamki():
     # przykladowa ramka: {TASK, M10, R-15, 7, /n}
@@ -290,13 +293,17 @@ def PisanieRamki():
           "P - Kp -> potegowanie bledu (0,10)\n"
           "I - Ki -> ilosc zapisy historycznego bledu (0,10)\n"
           "D - Kd -> potegowanie roznicy pomiedzy ostatnim a obecnym bledem, jak szybko ma reagowac (0,10)\n"
-          "B -> odczytanie bierzacej odleglosci z sonaru (1 - tak, 0 - pominiecie)\n"
-          "C -> ustawienie docelowej odleglosci pilki od sonaru, zalecane, uzyc najpierw B i przepisac wartosc (10,30)\n"
+          "E -> ustawienie punktu 0 dla servo (0-180)\n"
+          "T -> dlugosc trwania jednego kroku petli w milisekundach (100 - 200)\n"
+          "| B -> odczytanie bierzacej odleglosci z sonaru (1 - tak, 0 - pominiecie)\n"
+          "| C -> ustawienie docelowej odleglosci pilki od sonaru, zalecane, uzyc najpierw B i przepisac wartosc (10,30)\n"
+          "| Dla B i C uzytego razem, docelowa odleglosc bedzie ustawiona na odleglosc z sonaru\n"
           "Q - zakoncz pisanie ramki")
     zadania = input("Wpisz LITERY odpowiadajace funkcjom ktorych chcesz uzyc (np. RvTSi)\n$")
     ramka = "{TASK, "
     wykonywalnaRamka = False
     licznikKomend = 0
+    czyBBylo = False
     if zadania == "q" or zadania == "Q" or zadania == "" or zadania == "\n":
         return "p"
     else:
@@ -325,7 +332,15 @@ def PisanieRamki():
                 wykonywalnaRamka = True
                 licznikKomend+=1
         if zadania.__contains__("E") or zadania.__contains__("e"):
-            cmd = FunkcjaPochylnia_C()
+            cmd = FunkcjaPochylnia_E()
+            if cmd.__contains__("q") and not wykonywalnaRamka:
+                wykonywalnaRamka = False
+            else:
+                ramka += cmd
+                wykonywalnaRamka = True
+                licznikKomend+=1
+        if zadania.__contains__("T") or zadania.__contains__("t"):
+            cmd = FunkcjaPochylnia_T()
             if cmd.__contains__("q") and not wykonywalnaRamka:
                 wykonywalnaRamka = False
             else:
@@ -339,6 +354,7 @@ def PisanieRamki():
             elif not cmd.__contains__("N"):
                 ramka += cmd
                 wykonywalnaRamka = True
+                czyBBylo = True
             # N - jesli samo tylko BN to przejsc do kolejnego wpisywania ramki po wypisaniu komunikatu
         if zadania.__contains__("C") or zadania.__contains__("c"):
             #todo jesli uzyte B w tej samej ramce, ustawienie automatyczne
@@ -346,9 +362,13 @@ def PisanieRamki():
             if cmd.__contains__("q") and not wykonywalnaRamka:
                 wykonywalnaRamka = False
             else:
-                ramka += cmd
-                wykonywalnaRamka = True
-                licznikKomend+=1
+                if not czyBBylo:
+                    ramka += cmd
+                    wykonywalnaRamka = True
+                    licznikKomend+=1
+                else:
+                    FunkcjaPochylnia_A()
+
 
     if wykonywalnaRamka == False:
         return "p" #np ktos dal B0 tylko, takiej ramki nei oplaca sie wysylac
@@ -470,14 +490,14 @@ def InputUzytkownika():
     # wysyłanie danych do Arduino    Podaj predkosc (0-255) do Arduino
     cmd = ""
     while cmd not in ("q","Q","h","H","s","S","r","R"):
-        cmd = input("========================================\nWpisz \nh lub p dla pomocy,\nr dla pisania ramki, \nk dla konfiguracji sprzetu,\nq zeby zakonczyc:\n$")
+        cmd = input("========================================\nWpisz \nh lub p dla pomocy,\nr dla pisania ramki, \ns dla trybu zaliczeniowego,\nq zeby zakonczyc:\n$")
 
 
     if cmd == "q" or cmd == "Q":
         return "q"
     elif cmd == "h" or cmd == "H":
         return HelpWypisywanie()
-    elif cmd == "s" or cmd == "S" or cmd == "konf":
+    elif cmd == "s" or cmd == "S" or cmd == "start":
         return KonfiguracjaSprzetu()
     elif cmd == "r" or cmd == "R" or cmd == "ramka":
         return PisanieRamki()
@@ -540,11 +560,14 @@ finally:
     arduino.close()
     print("Zamknieto polaczenie.")
 
+"""
+przykladowa ramka funkcyjna:
+{TASK, P4.00, I0.30, D8.30, C45, T100, B1, C17.00, SK29,\n}
 
-    """
-    przykladowa ramka funkcyjna:
-    {TASK, M10, R-90, V100, T5, S1, B1, I1, E1, SK20,\n}
-    
-    przykladowa ramka konfiguracji sprzetu:
-    {KONFIG,R1,L0,SK1,\n}
-    """
+przykladowa ramka konfiguracji sprzetu:
+{KONFIG,R1,L0,SK1,\n}
+"""
+
+
+#todo dzialanie na float dla obliczania sumy kontrolnej
+#todo obsluga funkcji w arduino i rozszyfrowanie ramki

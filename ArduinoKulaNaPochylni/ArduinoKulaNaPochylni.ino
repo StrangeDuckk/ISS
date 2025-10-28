@@ -79,58 +79,44 @@
 
 
 // ------------- ustawienia bazowe --------------
+unsigned long myTime;  
+Servo myservo;  
+float distance;  
+float kp = 3.0; //potegowanie bledu 3.0 
+float ki = 0.5; //potegowanie bledu w czasie, zapis historyczny, jesli zwiekszamy, dluzej bedzie pamietal co sie dzielo wczesniej, jak cyfry wyskoczyly to dlugo czekal, male 0.5 
+float kd = 0.8; //poteguje roznice pomiedzy ostatnim a obecnym bledem, jak szybko ma zareagowac (przewiduje troche przyszlosc) kd jest 2x mniejsze lub wieksze niz kp (mniejsze wg macmaca) 0.8 
+float integral = 0.0;  
+float derivative = 0.0;  
+float previousError = 0.0;  
+float distance_point = 18.0;  
+int servo_zero = 0;  
+int t = 100;  
 
-#define PIN_LEFT_MOTOR_SPEED 5
-int PIN_LEFT_MOTOR_FORWARD = A0;            
-int PIN_LEFT_MOTOR_REVERSE = A1;
-#define PIN_LEFT_ENCODER 2
+
+// #define PIN_LEFT_MOTOR_SPEED 5
+// int PIN_LEFT_MOTOR_FORWARD = A0;            
+// int PIN_LEFT_MOTOR_REVERSE = A1;
+// #define PIN_LEFT_ENCODER 2
    
-#define PIN_RIGHT_MOTOR_SPEED 6
-int PIN_RIGHT_MOTOR_FORWARD = A2;         
-int PIN_RIGHT_MOTOR_REVERSE = A3;
-#define PIN_RIGHT_ENCODER 3
+// #define PIN_RIGHT_MOTOR_SPEED 6
+// int PIN_RIGHT_MOTOR_FORWARD = A2;         
+// int PIN_RIGHT_MOTOR_REVERSE = A3;
+// #define PIN_RIGHT_ENCODER 3
 
-#include <EEPROM.h>
+// #include <EEPROM.h>
 
-struct KonfiguracjaSilnikow {
-  int PIN_LEFT_MOTOR_FORWARD;
-  int PIN_LEFT_MOTOR_REVERSE;
-  int PIN_RIGHT_MOTOR_FORWARD;
-  int PIN_RIGHT_MOTOR_REVERSE;
-  bool initialized;
-};
+// struct KonfiguracjaSilnikow {
+//   int PIN_LEFT_MOTOR_FORWARD;
+//   int PIN_LEFT_MOTOR_REVERSE;
+//   int PIN_RIGHT_MOTOR_FORWARD;
+//   int PIN_RIGHT_MOTOR_REVERSE;
+//   bool initialized;
+// };
+
 // ------------- flgi stanu ---------------
 bool awaryjnyStop = false;
 bool wykonanieRuchu = true;
 
-// ------------------- ustawianie danych z EEPROM -------------------
-#define EEPROM_ADRES_KONFIG 0
-
-KonfiguracjaSilnikow config;
-
-// Funkcje EEPROM
-void ZapiszKonfiguracjeDoEEPROM() {
-  config.PIN_LEFT_MOTOR_FORWARD = PIN_LEFT_MOTOR_FORWARD;
-  config.PIN_LEFT_MOTOR_REVERSE = PIN_LEFT_MOTOR_REVERSE;
-  config.PIN_RIGHT_MOTOR_FORWARD = PIN_RIGHT_MOTOR_FORWARD;
-  config.PIN_RIGHT_MOTOR_REVERSE = PIN_RIGHT_MOTOR_REVERSE;
-  config.initialized = true;
-  EEPROM.put(EEPROM_ADRES_KONFIG, config);
-  Serial.println("|Zapisano konfiguracje silnikow w EEPROM|}");
-}
-
-void WczytajKonfiguracjeZEEPROM() {
-  EEPROM.get(EEPROM_ADRES_KONFIG, config);
-  //if (config.initialized) {
-    PIN_LEFT_MOTOR_FORWARD = config.PIN_LEFT_MOTOR_FORWARD;
-    PIN_LEFT_MOTOR_REVERSE = config.PIN_LEFT_MOTOR_REVERSE;
-    PIN_RIGHT_MOTOR_FORWARD = config.PIN_RIGHT_MOTOR_FORWARD;
-    PIN_RIGHT_MOTOR_REVERSE = config.PIN_RIGHT_MOTOR_REVERSE;
-    //Serial.println("{DONE,|Wczytano konfiguracje silnikow z EEPROM|}");
-  //} else {
-    //Serial.println("{DONE,|EEPROM pusty - uzyto domyslnych pinow|}");
-  //}
-}
 
 // ======================================================================================
 
@@ -138,19 +124,19 @@ void WczytajKonfiguracjeZEEPROM() {
 
 String odpowiedzDoUzytkownika= "{DONE,";
 
-int left_encoder_count=0;
-int right_encoder_count=0;
-int left_full_rotation = 20;
-int right_full_rotation = 20;
-int speed = 100;
+// int left_encoder_count=0;
+// int right_encoder_count=0;
+// int left_full_rotation = 20;
+// int right_full_rotation = 20;
+// int speed = 100;
 
-void left_encoder(){
-  left_encoder_count++;  
-}
+// void left_encoder(){
+//   left_encoder_count++;  
+// }
 
-void right_encoder(){
-  right_encoder_count++;  
-}
+// void right_encoder(){
+//   right_encoder_count++;  
+// }
 
 bool PoprawnaSumaKontrolna(String cmd, int sumaPodana){
   int suma = 0;
@@ -176,68 +162,106 @@ void WyslijACK(){
   Serial.println("{ACK}");
 }
 
-void setup() {
-  Serial.begin(SERIAL_BAUD_RATE);
-  WczytajKonfiguracjeZEEPROM();
-
-  // Jeśli piny spoza zakresu A0–A5 lub 0–13 → użyj domyślnych
-  if (config.PIN_LEFT_MOTOR_FORWARD < 0 || config.PIN_LEFT_MOTOR_FORWARD > A5) {
-    PIN_LEFT_MOTOR_FORWARD = A0;
-    PIN_LEFT_MOTOR_REVERSE = A1;
-    PIN_RIGHT_MOTOR_FORWARD = A2;
-    PIN_RIGHT_MOTOR_REVERSE = A3;
-  }
-
-  Serial.println("Polaczenie z Arduino jest gotowe.");
+void setup() {  
+  Serial.begin(9600);     
+  myservo.attach(9);  
+  myservo.write(95);  
+  pinMode(A0,INPUT);  
   
-  pinMode(PIN_LEFT_MOTOR_SPEED, OUTPUT);
-  analogWrite(PIN_LEFT_MOTOR_SPEED, 0);
-  pinMode(PIN_LEFT_MOTOR_FORWARD, OUTPUT);
-  pinMode(PIN_LEFT_MOTOR_REVERSE, OUTPUT);
+  
+  myTime = millis();//aktualny czas systemu  
+}  
 
-  pinMode(PIN_RIGHT_MOTOR_SPEED, OUTPUT);
-  analogWrite(PIN_RIGHT_MOTOR_SPEED, 0);
-  pinMode(PIN_RIGHT_MOTOR_FORWARD, OUTPUT);
-  pinMode(PIN_RIGHT_MOTOR_REVERSE, OUTPUT);
+// void setup() {
+//   Serial.begin(SERIAL_BAUD_RATE);
 
-  attachInterrupt(digitalPinToInterrupt(PIN_LEFT_ENCODER), left_encoder, RISING);
-  attachInterrupt(digitalPinToInterrupt(PIN_RIGHT_ENCODER), right_encoder, RISING);
-}
+//   Serial.println("Polaczenie z Arduino jest gotowe.");
+  
+//   pinMode(PIN_LEFT_MOTOR_SPEED, OUTPUT);
+//   analogWrite(PIN_LEFT_MOTOR_SPEED, 0);
+//   pinMode(PIN_LEFT_MOTOR_FORWARD, OUTPUT);
+//   pinMode(PIN_LEFT_MOTOR_REVERSE, OUTPUT);
+
+//   pinMode(PIN_RIGHT_MOTOR_SPEED, OUTPUT);
+//   analogWrite(PIN_RIGHT_MOTOR_SPEED, 0);
+//   pinMode(PIN_RIGHT_MOTOR_FORWARD, OUTPUT);
+//   pinMode(PIN_RIGHT_MOTOR_REVERSE, OUTPUT);
+
+//   attachInterrupt(digitalPinToInterrupt(PIN_LEFT_ENCODER), left_encoder, RISING);
+//   attachInterrupt(digitalPinToInterrupt(PIN_RIGHT_ENCODER), right_encoder, RISING);
+// }
 
 
 
-// ========================================== funkcje bota ==========================================
+// ========================================== funkcje pochylni ==========================================
 // --------------- konfiguracja ---------------
-void KonfiguracjaRuchuSwapSilnik(bool prawy,bool lewy){
-  bool zamieniono = false;
-  if(lewy){
-    int temp = PIN_LEFT_MOTOR_REVERSE;
-    PIN_LEFT_MOTOR_REVERSE = PIN_LEFT_MOTOR_FORWARD;
-    PIN_LEFT_MOTOR_FORWARD = temp;
-    odpowiedzDoUzytkownika += "|odwrocono kierunek lewego silnika|,";
-    zamieniono = true;
-  }
-  if(prawy){
-    int temp = PIN_RIGHT_MOTOR_REVERSE;
-    PIN_RIGHT_MOTOR_REVERSE = PIN_RIGHT_MOTOR_FORWARD;
-    PIN_RIGHT_MOTOR_FORWARD = temp;
-    odpowiedzDoUzytkownika += "|odwrocono kierunek prawego silnika|,";
-    zamieniono = true;
-  }
-  if (zamieniono)
-    ZapiszKonfiguracjeDoEEPROM();
-}
+// void KonfiguracjaRuchuSwapSilnik(bool prawy,bool lewy){
+//   bool zamieniono = false;
+//   if(lewy){
+//     int temp = PIN_LEFT_MOTOR_REVERSE;
+//     PIN_LEFT_MOTOR_REVERSE = PIN_LEFT_MOTOR_FORWARD;
+//     PIN_LEFT_MOTOR_FORWARD = temp;
+//     odpowiedzDoUzytkownika += "|odwrocono kierunek lewego silnika|,";
+//     zamieniono = true;
+//   }
+//   if(prawy){
+//     int temp = PIN_RIGHT_MOTOR_REVERSE;
+//     PIN_RIGHT_MOTOR_REVERSE = PIN_RIGHT_MOTOR_FORWARD;
+//     PIN_RIGHT_MOTOR_FORWARD = temp;
+//     odpowiedzDoUzytkownika += "|odwrocono kierunek prawego silnika|,";
+//     zamieniono = true;
+//   }
+//   if (zamieniono)
+//     ZapiszKonfiguracjeDoEEPROM();
+// }
 
-void Konfiguracja_EnkoderPelnyObrot(int prawyPelnyObrot, int lewyPelnyObrot){
-  if(prawyPelnyObrot != 0){
-    right_full_rotation = prawyPelnyObrot;
-    odpowiedzDoUzytkownika += "|nowy pelny obrot dla enkodera prawego ustawiony|,";
-  }
-  if(lewyPelnyObrot != 0){
-    left_full_rotation = prawyPelnyObrot;
-    odpowiedzDoUzytkownika += "|nowy pelny obrot dla enkodera lewego ustawiony|,";
-  }
-}
+// void Konfiguracja_EnkoderPelnyObrot(int prawyPelnyObrot, int lewyPelnyObrot){
+//   if(prawyPelnyObrot != 0){
+//     right_full_rotation = prawyPelnyObrot;
+//     odpowiedzDoUzytkownika += "|nowy pelny obrot dla enkodera prawego ustawiony|,";
+//   }
+//   if(lewyPelnyObrot != 0){
+//     left_full_rotation = prawyPelnyObrot;
+//     odpowiedzDoUzytkownika += "|nowy pelny obrot dla enkodera lewego ustawiony|,";
+//   }
+// }
+
+// ---------------- funkcje z tresci -----------------
+float get_dist(int n){  
+  long sum=0;  
+  for(int i=0;i<n;i++){  
+    sum=sum+analogRead(A0);  
+  }    
+  float adc=sum/n;  
+//zbiera wartosc 100 razy i usrednienie  
+
+  float distance_cm = 17569.7 * pow(adc, -1.2062); //przeliczenie na cm  
+  return(distance_cm);  
+//sciaga odleglosc od czurnika  
+}  
+
+void PID(){  
+//to jest algorytm caly praktycznie,   
+  float proportional = distance-distance_point; //proporcjonalny, im wiekszy blad tym silnejsze dzialanie regulatora, tutaj jest szybkosc, troche ponad 1  
+  integral = integral+proportional*0.1; // calkujacy, 0,1 jest do normalizacji wartosci, integral jest globalne pamietane z poprzedniej iteracji  
+  derivative=(proportional-previousError)/0.1; //rozniczkujacy, roznica pomiedzy aktualnym bleden i poprzedniej iteracji, mowi w która strone powinnismy się krecic  
+  float output=kp*proportional+ki*integral+kd*derivative;  
+//kp ki kd to sa parametry do regulowania pida, tym manipulujemy  
+  
+//distance point -> punkt docelowy  
+  
+//wypisanie wartosci  
+  Serial.print(distance);  
+  Serial.print(" : ");  
+  Serial.print(proportional);//blad pomiedzy tym co ma a tym co powinno byc  
+  Serial.print(" : ");  
+  Serial.println(output); //wysjcie z pida, powinien być w zakresie –10/10  
+  previousError=proportional;  
+  myservo.write(servo_zero+output); //tu sterujemy serwem pochylnia  
+// servo_zero jest rownym poziomem, sprawdzic i ustawic to samodzielnie  
+}  
+
+
 
 // ------------------- funkcje ruchu i danych -------------------
 
@@ -542,6 +566,17 @@ void WykonajRamke(String ramka){
 //   odpowiedzDoUzytkownika += right_encoder_count;
 //   odpowiedzDoUzytkownika += "]}, ";
 // }
+
+// ------------------- loop -----------------------
+// void loop() {  
+// //t to co ile mili sekund chce mieć kolejna iteracje 100, 150, 200  
+//   if (millis() > myTime+t){  
+//     distance = get_dist(100);   
+//     myTime = millis();  
+//     PID();  
+//   }  
+// }  
+
 
 void loop() {
   int speed = 0;

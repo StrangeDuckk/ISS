@@ -88,27 +88,6 @@ float distance_point = 18.0;
 int servo_zero = 0;  
 int t = 100;  
 
-
-// #define PIN_LEFT_MOTOR_SPEED 5
-// int PIN_LEFT_MOTOR_FORWARD = A0;            
-// int PIN_LEFT_MOTOR_REVERSE = A1;
-// #define PIN_LEFT_ENCODER 2
-   
-// #define PIN_RIGHT_MOTOR_SPEED 6
-// int PIN_RIGHT_MOTOR_FORWARD = A2;         
-// int PIN_RIGHT_MOTOR_REVERSE = A3;
-// #define PIN_RIGHT_ENCODER 3
-
-// #include <EEPROM.h>
-
-// struct KonfiguracjaSilnikow {
-//   int PIN_LEFT_MOTOR_FORWARD;
-//   int PIN_LEFT_MOTOR_REVERSE;
-//   int PIN_RIGHT_MOTOR_FORWARD;
-//   int PIN_RIGHT_MOTOR_REVERSE;
-//   bool initialized;
-// };
-
 // ------------- flgi stanu ---------------
 bool awaryjnyStop = false;
 bool wykonanieRuchu = true;
@@ -120,20 +99,6 @@ bool controlActive = false; // true gdy poruszanie dziala
 #define SERIAL_BAUD_RATE 9600
 
 String odpowiedzDoUzytkownika= "{DONE,";
-
-// int left_encoder_count=0;
-// int right_encoder_count=0;
-// int left_full_rotation = 20;
-// int right_full_rotation = 20;
-// int speed = 100;
-
-// void left_encoder(){
-//   left_encoder_count++;  
-// }
-
-// void right_encoder(){
-//   right_encoder_count++;  
-// }
 
 bool PoprawnaSumaKontrolna(String cmd, int sumaPodana){
   int suma = 0;
@@ -258,20 +223,16 @@ void Funkcja_E(int kat){
 void Funkcja_S(int czyAwaryjnie){
   //todo rzeczywiste zatrzymanie robota
   
-  // digitalWrite(PIN_LEFT_MOTOR_FORWARD, LOW);
-  // digitalWrite(PIN_LEFT_MOTOR_REVERSE, LOW);
-  // analogWrite(PIN_LEFT_MOTOR_SPEED, 0);
+  controlActive = false;
+  myservo.write(servo_zero);
 
-  // digitalWrite(PIN_RIGHT_MOTOR_FORWARD, LOW);
-  // digitalWrite(PIN_RIGHT_MOTOR_REVERSE, LOW);
-  // analogWrite(PIN_RIGHT_MOTOR_SPEED, 0);
-  
   //0 to tylko zatrzymanie bez zadnych informacji
   if(czyAwaryjnie == 1)
     odpowiedzDoUzytkownika += "S{Bot zatrzymal sie}, ";
   else if(czyAwaryjnie == 2){  
+    odpowiedzDoUzytkownika += "{DONE, Sterowanie PID zatrzymane, wahadlo zatrztymalo sie}, ";
     awaryjnyStop = true;
-    odpowiedzDoUzytkownika = "{DONE, Awaryjne_Zatrzymanie}";
+    // odpowiedzDoUzytkownika = "{DONE, Awaryjne_Zatrzymanie}";
     Serial.println(odpowiedzDoUzytkownika);
   }
 }
@@ -334,42 +295,19 @@ void WykonajRamke(String ramka){
     else if (komenda.startsWith("T")) Funkcja_T(komenda.substring(1).toInt()); //T100,
     else if (komenda.startsWith("B")) Funkcja_B();// B1, 
     else if (komenda.startsWith("C")) Funkcja_C(komenda.substring(1).toFloat(), czyCB);//C17.00
-
+    else if (komenda.startsWith("RUN")) Funkcja_START(); // od RUN
     start = end + 1;
     end = ramka.indexOf(",", start);
   }
 }
 
-//--------------------- M + V - ruch o zadana odleglosc -----------------------
-// void M_RuchOZadanaOdleglosc(int speed){
-//   //todo rozdzielic V i M
-  
-//   delay(500);
-//   digitalWrite(PIN_LEFT_MOTOR_FORWARD, HIGH);
-//   digitalWrite(PIN_LEFT_MOTOR_REVERSE, LOW);
-//   analogWrite(PIN_LEFT_MOTOR_SPEED, speed);
+void Funkcja_START() {
+  controlActive = true;
+  awaryjnyStop = false;
+  odpowiedzDoUzytkownika += "START{Sterowanie PID wlaczone}, ";
+}
 
-//   digitalWrite(PIN_RIGHT_MOTOR_FORWARD, LOW);
-//   digitalWrite(PIN_RIGHT_MOTOR_REVERSE, HIGH);
-//   analogWrite(PIN_RIGHT_MOTOR_SPEED, speed);
-//   delay(3000);
 
-//   digitalWrite(PIN_LEFT_MOTOR_FORWARD, LOW);
-//   digitalWrite(PIN_LEFT_MOTOR_REVERSE, LOW);
-//   analogWrite(PIN_LEFT_MOTOR_SPEED, 0);
-
-//   digitalWrite(PIN_RIGHT_MOTOR_FORWARD, LOW);
-//   digitalWrite(PIN_RIGHT_MOTOR_REVERSE, LOW);
-//   analogWrite(PIN_RIGHT_MOTOR_SPEED, 0);
-
-//   odpowiedzDoUzytkownika += "M {Wykonano ruch o ";
-//   odpowiedzDoUzytkownika += speed;
-//   odpowiedzDoUzytkownika += ", (odpowiedz kol: [";
-//   odpowiedzDoUzytkownika += left_encoder_count;
-//   odpowiedzDoUzytkownika += " ";
-//   odpowiedzDoUzytkownika += right_encoder_count;
-//   odpowiedzDoUzytkownika += "]}, ";
-// }
 
 // ------------------- loop -----------------------
 void poruszanie() {  
@@ -394,11 +332,17 @@ void loop() {
   int speed = 0;
   String cmd = "";
 
+  // --------- odbieranie danych z portu -------
   if (Serial.available()){
-    while(Serial.available() > 0) Serial.read(); // czyszczenie resztek bajtów
-    cmd = Serial.readStringUntil('\n');
+    // while(Serial.available() > 0) Serial.read(); // czyszczenie resztek bajtów
+    // cmd = Serial.readStringUntil('\n');
 
-    //sciagniecie ramki i podzielenie jej do walidacji
+    cmd = Serial.readStringUntil('\n');
+    Serial.print("DEBUG CMD: ");
+    Serial.println(cmd);
+
+
+    //---- sciagniecie ramki i podzielenie jej do walidacji ----
     if (cmd.indexOf("ACK2") < 0){
       int pozycjaSK = cmd.indexOf("SK");
       if (pozycjaSK != -1){
@@ -418,39 +362,9 @@ void loop() {
       }
     }
     
+    // ----------- wykonanie polecenia z ramki -----------
+    odpowiedzDoUzytkownika = "{Done, ";
 
-    if(cmd.indexOf("KONFIG")>=0){
-      //przykladowa ramka: {KONFIG,RN,LY,<NUMER>,\n}
-      // przykladowa ramka: '{KONFIG,R0,L1,PE100,LE150,SK8,\n}'
-      bool swapLewy =  false;
-      bool swapPrawy = false;
-      int prawyEnkoderCount = 0;
-      int lewyEnkoderCount = 0;
-      if(cmd.indexOf("L1")>=0)
-        swapLewy = true;
-      if(cmd.indexOf("R1")>=0)
-        swapPrawy = true;
-      if(cmd.indexOf("PE0")<0){
-        prawyEnkoderCount = cmd.substring(cmd.indexOf("PE")+2, cmd.indexOf(",", cmd.indexOf("PE")+2)).toInt();
-      }
-      if(cmd.indexOf("LE0")<0){
-        lewyEnkoderCount = cmd.substring(cmd.indexOf("LE")+2, cmd.indexOf(",", cmd.indexOf("LE")+2)).toInt();
-      }
-
-      // if(swapPrawy || swapLewy)
-      //   // KonfiguracjaRuchuSwapSilnik(swapPrawy, swapLewy);
-      // else
-      //   odpowiedzDoUzytkownika += "|Brak zmian w konfiguracji|,";
-
-      // if(prawyEnkoderCount>0 || lewyEnkoderCount>0)
-        // Konfiguracja_EnkoderPelnyObrot(prawyEnkoderCount,lewyEnkoderCount);
-      // else
-        // odpowiedzDoUzytkownika += "|Brak zmian w konfiguracji enkoderow|,";
-
-      odpowiedzDoUzytkownika += "}";
-      Serial.println(odpowiedzDoUzytkownika);
-    }
-    else{
       int start = cmd.indexOf(",") + 1;  // po pierwszym przecinku
       int end = cmd.indexOf(", SK");      // przed SK
       String ramkaSurowa = "";
@@ -458,29 +372,31 @@ void loop() {
         // {TASK, R10, SK1,\n} -> jednoelementowa ramka
         ramkaSurowa = cmd.substring(start, end+2);
         ramkaSurowa.trim();
-      }
 
       integral = 0;
       derivative = 0;
       previousError = 0;
+      awaryjnyStop = false;//reset flag
+      wykonanieRuchu = false;//reset dla pewnosci
 
-
+      // ---------- wykonanie ramki ------------
       WykonajRamke(ramkaSurowa);
-      poruszanie();
+      // --------- odeslanie informacji zwrotnej --------
       odpowiedzDoUzytkownika.setCharAt( odpowiedzDoUzytkownika.lastIndexOf(",")  , '}');
       Serial.println(odpowiedzDoUzytkownika);
     }
   }
+  else if (cmd.startsWith("{TASK, S2")) {
+    // awaryjny STOP
+    Funkcja_S(2);
+    return;
+  }
   
   odpowiedzDoUzytkownika = "{DONE,"; // reset zawartości
-  awaryjnyStop = false;//reset flag
-  wykonanieRuchu = false;//reset dla pewnosci
 
-  integral = 0;
-  derivative = 0;
-  previousError = 0;
-
-
-  // left_encoder_count=0;
-  // right_encoder_count=0;
+  // ---------- poruszanie ramieniem -----------
+  if( controlActive && !awaryjnyStop){
+    poruszanie();
+    Serial.println(odpowiedzDoUzytkownika);
+  }
 }

@@ -303,7 +303,7 @@ def PisanieRamki():
     licznikKomend = 0
     czyBBylo = False
     if zadania == "q" or zadania == "Q" or zadania == "" or zadania == "\n":
-        return "p"
+        return "q"
     else:
         if zadania.__contains__("P") or zadania.__contains__("p"):
             cmd = FunkcjaPochylnia_Kp()
@@ -373,6 +373,30 @@ def PisanieRamki():
 
     ramka += "SK"+SumaKontrolna(ramka)+",\n}"
     return ramka
+
+def TrybTestowy(arduino):
+    print("==== Tryb testowy ====")
+    print("Wysylanie ramki do zmiany PID, wpisz q aby wyjsc z trybu testowego")
+
+    global arduino_is_working
+    arduino_is_working = True
+    while True:
+        cmd = ""
+        cmd = PisanieRamki()
+
+        if cmd == 'q':
+            arduino_is_working = False
+            print("Zakonczono tryb testowy, powrot do menu glownego")
+            return "p"
+
+        arduino.write(cmd.encode())
+        arduino.flush()
+        print("OUT|",cmd.replace("\n", "\\n"))
+        response = arduino.readline().decode().strip()
+        if response:
+            print("IN| Arduino:",response)
+
+
 
 #TODO KONFIGURACJA JAKO TRYB ZALICZENIOWY
 #todo funkcja -> uruchomienie trybu zaliczeniowego, bez zmian czujnikow komenda START
@@ -487,18 +511,20 @@ def HelpWypisywanie():
 def InputUzytkownika():
     # wysyłanie danych do Arduino    Podaj predkosc (0-255) do Arduino
     cmd = ""
-    while cmd not in ("q","Q","h","H","s","S","r","R"):
-        cmd = input("========================================\nWpisz \nh lub p dla pomocy,\nr dla pisania ramki, \ns dla trybu zaliczeniowego,\nq zeby zakonczyc:\n$")
+    while cmd not in ("q","Q","h","H","s","S","r","R","t","T"):
+        cmd = input("========================================\nWpisz \nh lub p dla pomocy,\nr dla pisania ramki, \ns dla trybu zaliczeniowego,\nt dla trybu testowego,\nq zeby zakonczyc:\n$")
 
 
     if cmd == "q" or cmd == "Q":
         return "q"
     elif cmd == "h" or cmd == "H":
         return HelpWypisywanie()
-    elif cmd == "s" or cmd == "S" or cmd == "start":
+    elif cmd == "s" or cmd == "S":
         return KonfiguracjaSprzetu()
-    elif cmd == "r" or cmd == "R" or cmd == "ramka":
+    elif cmd == "r" or cmd == "R":
         return PisanieRamki()
+    elif cmd == "t" or cmd == "T":
+        return TrybTestowy(arduino)
 
 
 #============================================================================================

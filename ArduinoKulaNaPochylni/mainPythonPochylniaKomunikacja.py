@@ -391,66 +391,10 @@ Procedura oddania / test zaliczeniowy
 ○ MAE = średnia z |błąd próbkowania| co ten sam okres, co pętla PID.
 5. Punkt zero (TARGET): ogłoszony indywidualnie dla konkretnego stanowiska (sprzętu). Jeżeli system nie osiągnie i nie utrzyma celu w 10 s (oczywiste rozbujanie/niestabilność), część „wynikowa” (10 pkt) = 0
 """
-def KonfiguracjaSprzetu():
-    #przykladowa ramka: {KONFIG, R0, L1, PE200, LE0, SK3 ,"\n"}
-    print(" --------------- konfiguracja sprzetu --------------")
-    ramka = "{KONFIG,"
-    cmd = ""
-    while cmd not in("1", "0"):
-        cmd = input("Czy odwrocic (forward/backward) silnik prawy (1=Tak,0=Nie)? (1/0) $")
-
-    if cmd == "1":
-        ramka+="R1,"
-    else:
-        ramka+="R0,"
-
-    cmd = ""
-    while cmd not in("1", "0"):
-        cmd = input("Czy odwrocic (forward/backward) silnik lewy? (1=Tak,0=Nie)? (1/0) $")
-    if cmd == "1":
-        ramka+="L1,"
-    else:
-        ramka+="L0,"
-
-    cmd = ""
-    while cmd not in("1", "0"):
-        cmd = input("Czy zmienic bazowa ilosc punktow dla jednego obrotu kola PRAWEGO? (1=Tak,0=Nie)? (1/0) $")
-    if cmd == "1":
-        cmd = ""
-        while True:
-            cmd = input("PE| Podaj odczyt z enkodera dla prawego kola po jednym pelnym obrocie: $")
-
-            if not cmd.isdigit():
-                print("!PE| Podaj liczbe calkowita")
-                continue
-            else:
-                ramka += "PE"+str(cmd)+","
-                break
-    else:
-        ramka+="PE0,"
-
-    cmd = ""
-    while cmd not in ("1", "0"):
-        cmd = input("Czy zmienic bazowa ilosc punktow dla jednego obrotu kola Lewego? (1=Tak,0=Nie)? (1/0) $")
-    if cmd == "1":
-        cmd = ""
-        while True:
-            cmd = input(
-                "LE| Podaj odczyt z enkodera dla prawego kola po jednym pelnym obrocie: $")
-
-            if not cmd.isdigit():
-                print("!LE| Podaj liczbe calkowita")
-                continue
-            else:
-                ramka += "LE" + str(cmd)+","
-                break
-    else:
-        ramka += "LE0,"
-
-
-    ramka+= "SK"+SumaKontrolna(ramka)
-    ramka+=",\n}"
-    return ramka
+def PochylniaZaliczenie():
+    #przykladowa ramka: {ZAL, SK0 ,"\n"}
+    #todo suma MAE
+    return "{ZAL, SK0, \n}"
 
 def HelpWypisywanie():
     #todo napisac H od nowa
@@ -487,16 +431,16 @@ def HelpWypisywanie():
 def InputUzytkownika():
     # wysyłanie danych do Arduino    Podaj predkosc (0-255) do Arduino
     cmd = ""
-    while cmd not in ("q","Q","h","H","s","S","r","R"):
-        cmd = input("========================================\nWpisz \nh lub p dla pomocy,\nr dla pisania ramki, \ns dla trybu zaliczeniowego,\nq zeby zakonczyc:\n$")
+    while cmd not in ("q","Q","h","H","z","Z","r","R"):
+        cmd = input("========================================\nWpisz \nh lub p dla pomocy,\nr dla pisania ramki, \nz dla trybu zaliczeniowego,\nq zeby zakonczyc:\n$")
 
 
     if cmd == "q" or cmd == "Q":
         return "q"
     elif cmd == "h" or cmd == "H":
         return HelpWypisywanie()
-    elif cmd == "s" or cmd == "S" or cmd == "start":
-        return KonfiguracjaSprzetu()
+    elif cmd == "z" or cmd == "Z" or cmd == "start":
+        return PochylniaZaliczenie()
     elif cmd == "r" or cmd == "R" or cmd == "ramka":
         return PisanieRamki()
 
@@ -521,6 +465,7 @@ try:
         arduino.write(cmd.encode())
         arduino.flush()
 
+
         # --------------- 1. oczekiwanie na ACK -------------
         ack_status = SprawdzenieAckOdArduino(arduino)
         if ack_status == "close" or ack_status == "NACK":
@@ -533,7 +478,7 @@ try:
             while True:
                 if arduino.in_waiting > 0:
                     arduinoResponse = arduino.readline().decode().strip()
-
+                    print(arduinoResponse)
                     if arduinoResponse.startswith("{DONE"):
                         print("------- Arduino odpowiedz na ramke ---------")
                         print("IN| Arduino:" , arduinoResponse.replace("\n", "\\n"))

@@ -216,7 +216,7 @@ void PID(){
   
 //distance point -> punkt docelowy  
   
-//wypisanie wartosci  
+//wypisanie wartosci  z
   Serial.print(distance);  
   Serial.print(" : ");  
   Serial.print(proportional);//blad pomiedzy tym co ma a tym co powinno byc  
@@ -251,21 +251,15 @@ void Funkcja_D(float noweKd){
 
 void Funkcja_E(int kat){
   servo_zero = kat;
-  myservo.write(constrain(servo_zero, 0, 180));
+  myservo.write(servo_zero);
   odpowiedzDoUzytkownika += "E{Ustawiono punkt servo_zero na " + String(servo_zero) + "}, ";
 }
 
 void Funkcja_S(int czyAwaryjnie){
-  //todo rzeczywiste zatrzymanie robota
   
-  // digitalWrite(PIN_LEFT_MOTOR_FORWARD, LOW);
-  // digitalWrite(PIN_LEFT_MOTOR_REVERSE, LOW);
-  // analogWrite(PIN_LEFT_MOTOR_SPEED, 0);
+  controlActive = false;
+  myservo.write(servo_zero);
 
-  // digitalWrite(PIN_RIGHT_MOTOR_FORWARD, LOW);
-  // digitalWrite(PIN_RIGHT_MOTOR_REVERSE, LOW);
-  // analogWrite(PIN_RIGHT_MOTOR_SPEED, 0);
-  
   //0 to tylko zatrzymanie bez zadnych informacji
   if(czyAwaryjnie == 1)
     odpowiedzDoUzytkownika += "S{Bot zatrzymal sie}, ";
@@ -340,37 +334,6 @@ void WykonajRamke(String ramka){
   }
 }
 
-//--------------------- M + V - ruch o zadana odleglosc -----------------------
-// void M_RuchOZadanaOdleglosc(int speed){
-//   //todo rozdzielic V i M
-  
-//   delay(500);
-//   digitalWrite(PIN_LEFT_MOTOR_FORWARD, HIGH);
-//   digitalWrite(PIN_LEFT_MOTOR_REVERSE, LOW);
-//   analogWrite(PIN_LEFT_MOTOR_SPEED, speed);
-
-//   digitalWrite(PIN_RIGHT_MOTOR_FORWARD, LOW);
-//   digitalWrite(PIN_RIGHT_MOTOR_REVERSE, HIGH);
-//   analogWrite(PIN_RIGHT_MOTOR_SPEED, speed);
-//   delay(3000);
-
-//   digitalWrite(PIN_LEFT_MOTOR_FORWARD, LOW);
-//   digitalWrite(PIN_LEFT_MOTOR_REVERSE, LOW);
-//   analogWrite(PIN_LEFT_MOTOR_SPEED, 0);
-
-//   digitalWrite(PIN_RIGHT_MOTOR_FORWARD, LOW);
-//   digitalWrite(PIN_RIGHT_MOTOR_REVERSE, LOW);
-//   analogWrite(PIN_RIGHT_MOTOR_SPEED, 0);
-
-//   odpowiedzDoUzytkownika += "M {Wykonano ruch o ";
-//   odpowiedzDoUzytkownika += speed;
-//   odpowiedzDoUzytkownika += ", (odpowiedz kol: [";
-//   odpowiedzDoUzytkownika += left_encoder_count;
-//   odpowiedzDoUzytkownika += " ";
-//   odpowiedzDoUzytkownika += right_encoder_count;
-//   odpowiedzDoUzytkownika += "]}, ";
-// }
-
 // ------------------- loop -----------------------
 void poruszanie() {  
 //t to co ile mili sekund chce mieć kolejna iteracje 100, 150, 200  
@@ -419,33 +382,8 @@ void loop() {
     }
     
 
-    if(cmd.indexOf("KONFIG")>=0){
-      //przykladowa ramka: {KONFIG,RN,LY,<NUMER>,\n}
-      // przykladowa ramka: '{KONFIG,R0,L1,PE100,LE150,SK8,\n}'
-      bool swapLewy =  false;
-      bool swapPrawy = false;
-      int prawyEnkoderCount = 0;
-      int lewyEnkoderCount = 0;
-      if(cmd.indexOf("L1")>=0)
-        swapLewy = true;
-      if(cmd.indexOf("R1")>=0)
-        swapPrawy = true;
-      if(cmd.indexOf("PE0")<0){
-        prawyEnkoderCount = cmd.substring(cmd.indexOf("PE")+2, cmd.indexOf(",", cmd.indexOf("PE")+2)).toInt();
-      }
-      if(cmd.indexOf("LE0")<0){
-        lewyEnkoderCount = cmd.substring(cmd.indexOf("LE")+2, cmd.indexOf(",", cmd.indexOf("LE")+2)).toInt();
-      }
-
-      // if(swapPrawy || swapLewy)
-      //   // KonfiguracjaRuchuSwapSilnik(swapPrawy, swapLewy);
-      // else
-      //   odpowiedzDoUzytkownika += "|Brak zmian w konfiguracji|,";
-
-      // if(prawyEnkoderCount>0 || lewyEnkoderCount>0)
-        // Konfiguracja_EnkoderPelnyObrot(prawyEnkoderCount,lewyEnkoderCount);
-      // else
-        // odpowiedzDoUzytkownika += "|Brak zmian w konfiguracji enkoderow|,";
+    if(cmd.indexOf("ZAL")>=0){
+      wykonanieZAL();
 
       odpowiedzDoUzytkownika += "}";
       Serial.println(odpowiedzDoUzytkownika);
@@ -480,7 +418,19 @@ void loop() {
   derivative = 0;
   previousError = 0;
 
+}
 
-  // left_encoder_count=0;
-  // right_encoder_count=0;
+void wykonanieZAL(){
+  myservo.write(120);
+
+  delay(3000);
+  unsigned long startTime = millis();
+  while (millis() - startTime < 13000) {
+    if (millis() > myTime+t){
+      distance = get_dist(100); 
+      myTime = millis();
+
+      PID();
+    }
+  }
 }

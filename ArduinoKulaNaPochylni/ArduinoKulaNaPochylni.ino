@@ -67,18 +67,14 @@
 
  
   
-// void loop() {  
-// //t to co ile mili sekund chce mieć kolejna iteracje 100, 150, 200  
-//   if (millis() > myTime+t){  
-//     distance = get_dist(100);   
-//     myTime = millis();  
-//     PID();  
-//   }  
-// }   
+ 
 
 
 
 // ------------- ustawienia bazowe --------------
+#include <Wire.h>  
+#include <Servo.h> 
+
 unsigned long myTime;  
 Servo myservo;  
 float distance;  
@@ -116,6 +112,7 @@ int t = 100;
 // ------------- flgi stanu ---------------
 bool awaryjnyStop = false;
 bool wykonanieRuchu = true;
+bool controlActive = false; // true gdy poruszanie dziala
 
 
 // ======================================================================================
@@ -168,6 +165,7 @@ void setup() {
   myservo.write(95);  
   pinMode(A0,INPUT);  
   
+  Serial.println("Polaczenie z Arduino jest gotowe.");
   
   myTime = millis();//aktualny czas systemu  
 }  
@@ -194,38 +192,6 @@ void setup() {
 
 
 // ========================================== funkcje pochylni ==========================================
-// --------------- konfiguracja ---------------
-// void KonfiguracjaRuchuSwapSilnik(bool prawy,bool lewy){
-//   bool zamieniono = false;
-//   if(lewy){
-//     int temp = PIN_LEFT_MOTOR_REVERSE;
-//     PIN_LEFT_MOTOR_REVERSE = PIN_LEFT_MOTOR_FORWARD;
-//     PIN_LEFT_MOTOR_FORWARD = temp;
-//     odpowiedzDoUzytkownika += "|odwrocono kierunek lewego silnika|,";
-//     zamieniono = true;
-//   }
-//   if(prawy){
-//     int temp = PIN_RIGHT_MOTOR_REVERSE;
-//     PIN_RIGHT_MOTOR_REVERSE = PIN_RIGHT_MOTOR_FORWARD;
-//     PIN_RIGHT_MOTOR_FORWARD = temp;
-//     odpowiedzDoUzytkownika += "|odwrocono kierunek prawego silnika|,";
-//     zamieniono = true;
-//   }
-//   if (zamieniono)
-//     ZapiszKonfiguracjeDoEEPROM();
-// }
-
-// void Konfiguracja_EnkoderPelnyObrot(int prawyPelnyObrot, int lewyPelnyObrot){
-//   if(prawyPelnyObrot != 0){
-//     right_full_rotation = prawyPelnyObrot;
-//     odpowiedzDoUzytkownika += "|nowy pelny obrot dla enkodera prawego ustawiony|,";
-//   }
-//   if(lewyPelnyObrot != 0){
-//     left_full_rotation = prawyPelnyObrot;
-//     odpowiedzDoUzytkownika += "|nowy pelny obrot dla enkodera lewego ustawiony|,";
-//   }
-// }
-
 // ---------------- funkcje z tresci -----------------
 float get_dist(int n){  
   long sum=0;  
@@ -257,216 +223,48 @@ void PID(){
   Serial.print(" : ");  
   Serial.println(output); //wysjcie z pida, powinien być w zakresie –10/10  
   previousError=proportional;  
-  myservo.write(servo_zero+output); //tu sterujemy serwem pochylnia  
+  
+  int servo_cmd = constrain(servo_zero + output, 0, 180);
+  myservo.write(servo_cmd);
+
+  //myservo.write(servo_zero+output); //tu sterujemy serwem pochylnia  
 // servo_zero jest rownym poziomem, sprawdzic i ustawic to samodzielnie  
 }  
 
 
 
 // ------------------- funkcje ruchu i danych -------------------
-
-void Funkcja_M(int liczbaCM){
-  // int impulsyNaCentymetrLewy = left_full_rotation/16; // do zmiany po zmierzeniu kol rzeczywiscie, 5cm przyjete. obwod: 5*PI = 16cm
-  // int impulsyNaCentymetrPrawy = right_full_rotation/16;
-
-  // int lewyTarget = liczbaCM*impulsyNaCentymetrLewy; //do tylu impulsow na lewym kole dazymy
-  // int prawyTarget = liczbaCM*impulsyNaCentymetrPrawy;
-
-  // //tymczasowe enkodery
-  // int LeftEncoderCountTemp = 0;
-  // int RightEncoderCountTemp = 0;
-
-  // // ruszenie do przodu
-  // digitalWrite(PIN_LEFT_MOTOR_FORWARD, HIGH);
-  // digitalWrite(PIN_LEFT_MOTOR_REVERSE, LOW);
-  // analogWrite(PIN_LEFT_MOTOR_SPEED, speed);
-
-  // digitalWrite(PIN_RIGHT_MOTOR_FORWARD, LOW);
-  // digitalWrite(PIN_RIGHT_MOTOR_REVERSE, HIGH);
-  // analogWrite(PIN_RIGHT_MOTOR_SPEED, speed);
-
-  // //jazda do konkretnego dystansu
-  // while (LeftEncoderCountTemp < lewyTarget && RightEncoderCountTemp < prawyTarget){
-  //   //korekta kierunku
-  //   if (left_encoder_count > right_encoder_count) {
-  //     analogWrite(PIN_LEFT_MOTOR_SPEED, speed - 5);
-  //     analogWrite(PIN_RIGHT_MOTOR_SPEED, speed);
-  //   } else if (right_encoder_count > left_encoder_count) {
-  //     analogWrite(PIN_RIGHT_MOTOR_SPEED, speed - 5);
-  //     analogWrite(PIN_LEFT_MOTOR_SPEED, speed);
-  //   } else {
-  //     analogWrite(PIN_LEFT_MOTOR_SPEED, speed);
-  //     analogWrite(PIN_RIGHT_MOTOR_SPEED, speed);
-  //   }
-  // }
-
-  // //zatrzymanie
-  // if (left_encoder_count > right_encoder_count) {
-  //     analogWrite(PIN_LEFT_MOTOR_SPEED, speed - 5);
-  //     analogWrite(PIN_RIGHT_MOTOR_SPEED, speed);
-  //   } else if (right_encoder_count > left_encoder_count) {
-  //     analogWrite(PIN_RIGHT_MOTOR_SPEED, speed - 5);
-  //     analogWrite(PIN_LEFT_MOTOR_SPEED, speed);
-  //   } else {
-  //     analogWrite(PIN_LEFT_MOTOR_SPEED, speed);
-  //     analogWrite(PIN_RIGHT_MOTOR_SPEED, speed);
-  //   }
-
-  wykonanieRuchu = true;
-  awaryjnyStop = false;
-
-  digitalWrite(PIN_LEFT_MOTOR_FORWARD, HIGH);
-  digitalWrite(PIN_LEFT_MOTOR_REVERSE, LOW);
-  analogWrite(PIN_LEFT_MOTOR_SPEED, speed);
-
-  digitalWrite(PIN_RIGHT_MOTOR_FORWARD, LOW);
-  digitalWrite(PIN_RIGHT_MOTOR_REVERSE, HIGH);
-  analogWrite(PIN_RIGHT_MOTOR_SPEED, speed);
-
-  unsigned long start = millis();
-  while(millis()-start < 1000)
-  {
-    // Sprawdzenie awaryjnego stopu z Serial
-      if(Serial.available() > 0){
-        String cmd = Serial.readStringUntil('\n');
-        if(cmd.indexOf("S2") >= 0){ // przychodzący STOP awaryjny
-          awaryjnyStop = true;
-        }
-      }
-
-    if(awaryjnyStop){
-      Funkcja_S(2);
-      wykonanieRuchu = false;
-      return;
-    }
-    delay(10);
-  }
-
-  Funkcja_S(0);
-  odpowiedzDoUzytkownika += "M{Bot przejechal o " + String(liczbaCM) + " cm}, ";
-  Funkcja_E();
-
-  wykonanieRuchu = false;
+void Funkcja_P(float noweKp){
+  kp = noweKp;
+  odpowiedzDoUzytkownika += "P{Kp pochylni zostala ustawiona na " + String(kp) + "}, ";
 }
 
-void Funkcja_R(int kat){
-  wykonanieRuchu = true;
-  awaryjnyStop = false;
-
-  digitalWrite(PIN_LEFT_MOTOR_FORWARD, HIGH);
-  digitalWrite(PIN_LEFT_MOTOR_REVERSE, LOW);
-  analogWrite(PIN_LEFT_MOTOR_SPEED, speed);
-
-  digitalWrite(PIN_RIGHT_MOTOR_FORWARD, LOW);
-  digitalWrite(PIN_RIGHT_MOTOR_REVERSE, HIGH);
-  analogWrite(PIN_RIGHT_MOTOR_SPEED, speed);
-  
-  unsigned long start = millis();
-  while(millis()-start < 500)
-  {
-    // Sprawdzenie awaryjnego stopu z Serial
-      if(Serial.available() > 0){
-        String cmd = Serial.readStringUntil('\n');
-        if(cmd.indexOf("S2") >= 0){ // przychodzący STOP awaryjny
-          awaryjnyStop = true;
-        }
-      }
-
-    if(awaryjnyStop){
-      Funkcja_S(2);
-      wykonanieRuchu = false;
-      return;
-    }
-    delay(10);
-  }
-
-  Funkcja_S(0);
-  odpowiedzDoUzytkownika += "R{Bot obrocil sie o " + String(kat) + " stopni}, ";
-  Funkcja_E();
-
-  wykonanieRuchu = false;
+void Funkcja_I(float noweKi){
+  ki = noweKi;
+  odpowiedzDoUzytkownika += "I{Ki pochylni zostala ustawiona na " + String(ki) + "}, ";
 }
 
-void Funkcja_V(int predkosc){
-  speed = predkosc;
-  odpowiedzDoUzytkownika += "V{Predkosc bota zostala ustawiona na " + String(speed) + "}, ";
+void Funkcja_D(float noweKd){
+  kd = noweKd;
+  odpowiedzDoUzytkownika += "D{Kd pochylni zostala ustawiona na " + String(kd) + "}, ";
 }
 
-void Funkcja_T(int iloscSekund, bool czyTV) {
-  if(!czyTV){
-    wykonanieRuchu = true;
-    awaryjnyStop = false;
-
-    unsigned long start = millis();
-    while(millis()-start < iloscSekund*1000)
-   {
-      if(Serial.available() > 0){
-      String cmd = Serial.readStringUntil('\n');
-      if(cmd.indexOf("S2") >= 0){
-        Funkcja_S(2);
-        return;
-        }
-      }
-
-      if(awaryjnyStop){
-        Funkcja_S(2);
-        wykonanieRuchu = false;
-        return;
-      }
-      delay(10);
-    }
-
-    odpowiedzDoUzytkownika += "T{Uplynelo " + String(iloscSekund) + " sekund}, ";
-    wykonanieRuchu = false;
-  }
-  else{
-  wykonanieRuchu = true;
-  awaryjnyStop = false;
-
-  digitalWrite(PIN_LEFT_MOTOR_FORWARD, HIGH);
-  digitalWrite(PIN_LEFT_MOTOR_REVERSE, LOW);
-  analogWrite(PIN_LEFT_MOTOR_SPEED, speed);
-
-  digitalWrite(PIN_RIGHT_MOTOR_FORWARD, LOW);
-  digitalWrite(PIN_RIGHT_MOTOR_REVERSE, HIGH);
-  analogWrite(PIN_RIGHT_MOTOR_SPEED, speed);
-
-  unsigned long start = millis();
-  while(millis()-start < iloscSekund*1000)
-  {
-      if(Serial.available() > 0){
-      String cmd = Serial.readStringUntil('\n');
-      if(cmd.indexOf("S2") >= 0){
-        Funkcja_S(2);
-        return;
-        }
-      }
-
-      if(awaryjnyStop){
-        Funkcja_S(2);
-        wykonanieRuchu = false;
-        return;
-      }
-      delay(10);
-    }
-
-    Funkcja_S(0);
-    odpowiedzDoUzytkownika += "TV{Robot poruszal sie przez " + String(iloscSekund) + " sekund predkoscia ";
-    odpowiedzDoUzytkownika += String(speed) + "}, ";
-    Funkcja_E();
-
-    wykonanieRuchu = false;
-  }
+void Funkcja_E(int kat){
+  servo_zero = kat;
+  myservo.write(constrain(servo_zero, 0, 180));
+  odpowiedzDoUzytkownika += "E{Ustawiono punkt servo_zero na " + String(servo_zero) + "}, ";
 }
 
 void Funkcja_S(int czyAwaryjnie){
-  digitalWrite(PIN_LEFT_MOTOR_FORWARD, LOW);
-  digitalWrite(PIN_LEFT_MOTOR_REVERSE, LOW);
-  analogWrite(PIN_LEFT_MOTOR_SPEED, 0);
+  //todo rzeczywiste zatrzymanie robota
+  
+  // digitalWrite(PIN_LEFT_MOTOR_FORWARD, LOW);
+  // digitalWrite(PIN_LEFT_MOTOR_REVERSE, LOW);
+  // analogWrite(PIN_LEFT_MOTOR_SPEED, 0);
 
-  digitalWrite(PIN_RIGHT_MOTOR_FORWARD, LOW);
-  digitalWrite(PIN_RIGHT_MOTOR_REVERSE, LOW);
-  analogWrite(PIN_RIGHT_MOTOR_SPEED, 0);
+  // digitalWrite(PIN_RIGHT_MOTOR_FORWARD, LOW);
+  // digitalWrite(PIN_RIGHT_MOTOR_REVERSE, LOW);
+  // analogWrite(PIN_RIGHT_MOTOR_SPEED, 0);
   
   //0 to tylko zatrzymanie bez zadnych informacji
   if(czyAwaryjnie == 1)
@@ -478,45 +276,51 @@ void Funkcja_S(int czyAwaryjnie){
   }
 }
 
+void Funkcja_T(int iloscMiliSekund) {
+  t = iloscMiliSekund;
+  odpowiedzDoUzytkownika += "T{Ustawiono predkosc naprawy na " + String(t) + "}, ";
+}
+
+
+
 void Funkcja_B(){
-  odpowiedzDoUzytkownika += "B{Odczyt z sonaru na koniec komend TODO}, ";
+  odpowiedzDoUzytkownika += "B{Odczyt z sonaru " + String(get_dist(10)) + "}, ";
 }
 
 void Funkcja_I(){
   odpowiedzDoUzytkownika += "I{Odczyt z czujnika na koniec komend TODO}, ";
 }
 
-void Funkcja_E(){
-  odpowiedzDoUzytkownika += "E{Odczyt z kol na koniec: [";
-  odpowiedzDoUzytkownika += left_encoder_count;
-  odpowiedzDoUzytkownika += " , ";
-  odpowiedzDoUzytkownika += right_encoder_count;
-  odpowiedzDoUzytkownika += "]}, ";
+
+
+void Funkcja_C(float odl, bool czyBC){
+  distance_point = odl;
+  odpowiedzDoUzytkownika += "C{Ustawiono odleglosc celu na: " + String(distance_point) + "}, ";
 }
 
 // ------------------ parsowanie ramki -------------------
 void WykonajRamke(String ramka){
-  //przykladowa ramka: {TASK, M10, R-90, V100, T5, S1, B1, I1, E1, SK19,\n}
-  //przetwarzana ramka:  M10, R-90, V100, T5, S1, B1, I1, E1
+  //przykladowa ramka: {TASK, P4.00, I0.30, D8.30, C45, T100, B1, C17.00, SK29,\n}
+  //przetwarzana ramka:  P4.00, I0.30, D8.30, C45, T100, B1, C17.00
   ramka.trim();
 
   int start = 0;
   int end = ramka.indexOf(",");
 
-  bool czyTV = false;
+  bool czyCB = false;
 
-  if (ramka.indexOf("T")>=0 && ramka.indexOf("V")>=0){
-    czyTV = true;
+  if (ramka.indexOf("C")>=0 && ramka.indexOf("B")>=0){// todo c i b
+    czyCB = true;
   }
   
   while (end != -1){
     String komenda = ramka.substring(start, end);
     komenda.trim();
 
-    if (komenda.startsWith("M")) Funkcja_M(komenda.substring(1).toInt());
-    else if (komenda.startsWith("R")) Funkcja_R(komenda.substring(1).toInt());
-    else if (komenda.startsWith("V")) Funkcja_V(komenda.substring(1).toInt());
-    else if (komenda.startsWith("T")) Funkcja_T(komenda.substring(1).toInt(), czyTV);
+    if (komenda.startsWith("P")) Funkcja_P(komenda.substring(1).toFloat()); //P4.00, 
+    else if (komenda.startsWith("I")) Funkcja_I(komenda.substring(1).toFloat());//I0.30,
+    else if (komenda.startsWith("D")) Funkcja_D(komenda.substring(1).toFloat());//D8.30, 
+    else if (komenda.startsWith("E")) Funkcja_E(komenda.substring(1).toInt()); //E45, 
     else if (komenda.startsWith("S")) {
       int wartosc = komenda.substring(1).toInt();
       if (wartosc == 2) { // STOP awaryjny
@@ -527,9 +331,9 @@ void WykonajRamke(String ramka){
         Funkcja_S(1);
       }
     }
-    else if (komenda.startsWith("B")) Funkcja_B();
-    else if (komenda.startsWith("I")) Funkcja_I();
-    else if (komenda.startsWith("E")) Funkcja_E();
+    else if (komenda.startsWith("T")) Funkcja_T(komenda.substring(1).toInt()); //T100,
+    else if (komenda.startsWith("B")) Funkcja_B();// B1, 
+    else if (komenda.startsWith("C")) Funkcja_C(komenda.substring(1).toFloat(), czyCB);//C17.00
 
     start = end + 1;
     end = ramka.indexOf(",", start);
@@ -568,14 +372,22 @@ void WykonajRamke(String ramka){
 // }
 
 // ------------------- loop -----------------------
-// void loop() {  
-// //t to co ile mili sekund chce mieć kolejna iteracje 100, 150, 200  
-//   if (millis() > myTime+t){  
-//     distance = get_dist(100);   
-//     myTime = millis();  
-//     PID();  
-//   }  
-// }  
+void poruszanie() {  
+//t to co ile mili sekund chce mieć kolejna iteracje 100, 150, 200  
+  if (millis() > myTime+t){  
+    distance = get_dist(100);   
+    myTime = millis();  
+
+    if (millis() % 500 < 20) {
+    Serial.print("Dist: "); Serial.print(distance);
+    Serial.print(" Target: "); Serial.print(distance_point);
+    Serial.print(" Servo: "); Serial.println(servo_zero);
+    }
+
+
+    PID();  
+  }  
+}  
 
 
 void loop() {
@@ -625,15 +437,15 @@ void loop() {
         lewyEnkoderCount = cmd.substring(cmd.indexOf("LE")+2, cmd.indexOf(",", cmd.indexOf("LE")+2)).toInt();
       }
 
-      if(swapPrawy || swapLewy)
-        KonfiguracjaRuchuSwapSilnik(swapPrawy, swapLewy);
-      else
-        odpowiedzDoUzytkownika += "|Brak zmian w konfiguracji|,";
+      // if(swapPrawy || swapLewy)
+      //   // KonfiguracjaRuchuSwapSilnik(swapPrawy, swapLewy);
+      // else
+      //   odpowiedzDoUzytkownika += "|Brak zmian w konfiguracji|,";
 
-      if(prawyEnkoderCount>0 || lewyEnkoderCount>0)
-        Konfiguracja_EnkoderPelnyObrot(prawyEnkoderCount,lewyEnkoderCount);
-      else
-        odpowiedzDoUzytkownika += "|Brak zmian w konfiguracji enkoderow|,";
+      // if(prawyEnkoderCount>0 || lewyEnkoderCount>0)
+        // Konfiguracja_EnkoderPelnyObrot(prawyEnkoderCount,lewyEnkoderCount);
+      // else
+        // odpowiedzDoUzytkownika += "|Brak zmian w konfiguracji enkoderow|,";
 
       odpowiedzDoUzytkownika += "}";
       Serial.println(odpowiedzDoUzytkownika);
@@ -648,7 +460,13 @@ void loop() {
         ramkaSurowa.trim();
       }
 
+      integral = 0;
+      derivative = 0;
+      previousError = 0;
+
+
       WykonajRamke(ramkaSurowa);
+      poruszanie();
       odpowiedzDoUzytkownika.setCharAt( odpowiedzDoUzytkownika.lastIndexOf(",")  , '}');
       Serial.println(odpowiedzDoUzytkownika);
     }
@@ -658,6 +476,11 @@ void loop() {
   awaryjnyStop = false;//reset flag
   wykonanieRuchu = false;//reset dla pewnosci
 
-  left_encoder_count=0;
-  right_encoder_count=0;
+  integral = 0;
+  derivative = 0;
+  previousError = 0;
+
+
+  // left_encoder_count=0;
+  // right_encoder_count=0;
 }

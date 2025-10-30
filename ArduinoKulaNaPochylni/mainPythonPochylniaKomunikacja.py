@@ -258,14 +258,13 @@ def FunkcjaPochylnia_E():
             return "q"
 
         if not cmd.isdigit():
-            print("!C| Podaj liczbe")
+            print("!E| Podaj liczbe")
             continue
         if 0 <= int(cmd) <= 180:#todo jesli serwo 360 zmienic zakres
-            return "C" + str(cmd) + ", "
+            return "E" + str(cmd) + ", "
         else:
-            print("!C| Podaj liczbe calkowita z zakresu (0-180)")
+            print("!E| Podaj liczbe calkowita z zakresu (0-180)")
 
-    return "E" + str(cmd) + ", "
 
 def FunkcjaPochylnia_T():
 #ustawienie zadanej odleglosci jako target
@@ -284,7 +283,6 @@ def FunkcjaPochylnia_T():
         else:
             print("!T| Podaj liczbe calkowita z zakresu (100-200)")
 
-    return "T" + str(cmd) + ", "
 
 def PisanieRamki():
     # przykladowa ramka: {TASK, M10, R-15, 7, /n}

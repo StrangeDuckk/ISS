@@ -82,8 +82,8 @@ arduino_is_working = False
 
 
 # ===================================================================================================
-
 # ----------------- funkcje -----------------
+
 def SumaKontrolna(ramka):
     #suma kontrolna dla ramek to suma liczb z ramki %256 (zeby bylo na pewno na 8 bitach zapisane)
     suma = 0
@@ -125,10 +125,8 @@ def ACK_Odeslanie(arduino):
     arduino.write(ack_ramka.encode())
     print("OUT| ACK2 do Arduino:", ack_ramka.replace("\n", "\\n"))
 
-
-
 # ------------------------ funkcje robota --------------------------
-# #todo arduino caly czas zwraca odpis z czujnikow, komunikacje zakancza ramka {Done,..}
+#todo arduino caly czas zwraca odpis z czujnikow, komunikacje zakancza ramka {Done,..}
 
 def FunkcjaPochylnia_Kp():
     #potegowanie bledu okolo 3.0
@@ -358,28 +356,6 @@ def PisanieRamki():
     ramka += "SK"+SumaKontrolna(ramka)+",\n}"
     return ramka
 
-
-def TrybTestowy(arduino):
-    print("==== Tryb testowy ====")
-    print("Wysylanie ramki do zmiany PID, wpisz q aby wyjsc z trybu testowego")
-    global arduino_is_working
-    arduino_is_working = True
-    while True:
-        cmd = ""
-        cmd = PisanieRamki()
-        if cmd == 'q':
-            arduino_is_working = False
-            print("Zakonczono tryb testowy, powrot do menu glownego")
-            return "p"
-
-        arduino.write(cmd.encode())
-        arduino.flush()
-        print("OUT|",cmd.replace("\n", "\\n"))
-
-        response = arduino.readline().decode().strip()
-        if response:
-            print("IN| Arduino:",response)
-
 #TODO KONFIGURACJA JAKO TRYB ZALICZENIOWY
 #todo funkcja -> uruchomienie trybu zaliczeniowego, bez zmian czujnikow komenda START
 """
@@ -397,7 +373,6 @@ Procedura oddania / test zaliczeniowy
 ○ MAE = średnia z |błąd próbkowania| co ten sam okres, co pętla PID.
 5. Punkt zero (TARGET): ogłoszony indywidualnie dla konkretnego stanowiska (sprzętu). Jeżeli system nie osiągnie i nie utrzyma celu w 10 s (oczywiste rozbujanie/niestabilność), część „wynikowa” (10 pkt) = 0
 """
-
 def PochylniaZaliczenie():
     #przykladowa ramka: {ZAL, SK0 ,"\n"}
     #todo suma MAE
@@ -451,8 +426,8 @@ def InputUzytkownika():
     elif cmd == "r" or cmd == "R" or cmd == "ramka":
         return PisanieRamki()
 
-#============================================================================================
 
+#============================================================================================
 # --------- petla glowna -------
 try:
     while True:

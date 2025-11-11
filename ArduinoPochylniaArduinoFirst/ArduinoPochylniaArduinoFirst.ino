@@ -44,6 +44,8 @@ void setup() {
   myservo.write(95);
   pinMode(A0,INPUT);
 
+  Serial.println("Arduino polaczone poprawnie!");
+
   myTime = millis();
 }
 

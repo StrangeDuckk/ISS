@@ -85,7 +85,6 @@ def Tryb_Zaliczeniowy_dzialanie(cmd):
     #pochylenie pochylni w strone czujnika i oczekiwanei na komende do startu opdliczania
     print("ZAL | Pochylenie w strone czujnika, kiedy gotowe, nacisnij s")
 
-    kom = ""
     while True:
         kom = input("ZAL | oczekiwanie na komende 's': ")
         if kom == "s" or kom == "S":
@@ -114,12 +113,9 @@ def Tryb_Zaliczeniowy_dzialanie(cmd):
                     except Exception:
                         wynik = "!BLAD - niewlasciwa wartosc podczas konwersji"
                     break
-        #todo zobaczyc time sleep ale nie powinno nic zwalniac programu
-
-    #todo limit 10 s, potem nie ruszanie sie, 3 sekundy zbieranie bledu i obliczenie sredniej bezwzglednej
-    #wypisac wynik zaokraglony do dwoch miejsc po przecinku i wyjsc z trybu zaliczeniowego
 
     print(f"ZAL | zakonczono prodedure z wynikiem: {wynik}")
+    TRYB_Zaliczeniowy = False
 
 def Tryb_Zaliczeniowy_funkcja_wprowadzajaca():
     global TRYB_Zaliczeniowy, TRYB_Testowy

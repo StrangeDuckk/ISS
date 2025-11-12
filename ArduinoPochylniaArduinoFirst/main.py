@@ -70,8 +70,131 @@ TRYB_Testowy = False
 TRYB_Zaliczeniowy = False
 
 # --------- metody komunikacyjne -------------
+def HelpWypisywanie():
+    print("todo help wypisywanie")
+
+def Tryb_Zaliczeniowy_dzialanie(cmd):
+    global TRYB_Zaliczeniowy, TRYB_Testowy
+    #Tryb zaliczeniowy: system zaczyna od pozycji lekko pochylonej w stronę czujnika,
+    # tak aby kulka zsunęła się do czujnika, min. 10 sekund;
+    # po wydaniu komendy regulator ma:
+    # # ■ w ≤ 10 s ustawić kulkę na TARGET,
+    # # ■ następnie przez 3 s logować błąd i obliczyć średnią z modułu błędu bezwzględnego,
+    # # ■ wypisać wynik zaokrąglony do dwóch miejsc po przecinku i zakończyć sterowanie.
+
+    #pochylenie pochylni w strone czujnika i oczekiwanei na komende do startu opdliczania
+    #todo wydanie polecenia aby kulka przesunela sie do czujnika
+    kom = ""
+    while True:
+        kom = input("ZAL | oczekiwanie na komende 's': ")
+        if kom == "s" or kom == "S":
+            break
+
+    #todo limit 10 s, potem nie ruszanie sie, 3 sekundy zbieranie bledu i obliczenie sredniej bezwzglednej
+    #wypisac wynik zaokraglony do dwoch miejsc po przecinku i wyjsc z trybu zaliczeniowego
+
+    print("ZAL | zakonczono prodedure z wynikiem: {wynik}")
+
+def Tryb_Zaliczeniowy_funkcja_wprowadzajaca():
+    global TRYB_Zaliczeniowy, TRYB_Testowy
+    TRYB_Zaliczeniowy = True
+    TRYB_Testowy = False
+
+
+    print("-------- URUCHOMIONO TRYB ZALICZENIOWY ---------")
+    print(f"trybzaliczeniowy: {TRYB_Zaliczeniowy}, trybtestowy: {TRYB_Testowy}")
+    #wyslanie ramki do pochylni z informacja o wlaczeniu trybu zaliczeniowego: "{ZAL,1}"
+    cmd = "{ZAL,1}"
+
+    arduino.reset_input_buffer()
+    arduino.reset_output_buffer()
+    print(f"OUT| Wyslanie do arduino:     {cmd}")
+    arduino.write(cmd.encode())
+    arduino.flush()
+
+    #oczekiwanie na ACK:
+    ACK_od_Arduino(cmd) #tutaj uruchomienie funkcji Tryb_Zaliczeniowy_dzialanie()
+
+    return "k"
+
+def Tryb_Testowy_funkcja_dzialanie(cmd):
+    # komunikacja z arduino do momentu nacisniecia q
+    # todo mozliwosc ustawienia kp, ki, kd, distance_point, servo_zero, t rownoczesnie odbierajac wszystko
+
+    print("TEST | zakonczono prodedure")
+    pass
+
+def Tryb_Testowy_funkcja_wprowadzajaca():
+    global TRYB_Zaliczeniowy, TRYB_Testowy
+    TRYB_Zaliczeniowy = False
+    TRYB_Testowy = True
+
+    print("-------- URUCHOMIONO TRYB TESTOWY ---------")
+    print(f"trybzaliczeniowy: {TRYB_Zaliczeniowy}, trybtestowy: {TRYB_Testowy}")
+
+    # wyslanie ramki do pochylni z informacja o wlaczeniu trybu zaliczeniowego: "{TEST,1}"
+    cmd = "{TEST,1}"
+
+    arduino.reset_input_buffer()
+    arduino.reset_output_buffer()
+    print(f"OUT| Wyslanie do arduino:     {cmd}")
+    arduino.write(cmd.encode())
+    arduino.flush()
+
+    # oczekiwanie na ACK:
+    ACK_od_Arduino(cmd) #tutaj uruchomienie funkcji Tryb_Testowy_funkcja_dzialanie
+
+    return "k"
+
+
 def InputUzytkownika():
-    return "q"
+    # wysyłanie danych do Arduino    Podaj predkosc (0-255) do Arduino
+    cmd = ""
+    while cmd not in ("q", "Q", "h", "H", "z", "Z", "t", "T"):
+        cmd = input(
+            "========================================\n"
+            "Wpisz \n"
+            "h lub p dla pomocy,\n"
+            "z dla trybu zaliczeniowego,\n"
+            "t dla trybu testowego, \n"
+            "q zeby zakonczyc:\n$")
+
+    if cmd == "q" or cmd == "Q":
+        global TRYB_Testowy, TRYB_Zaliczeniowy
+        TRYB_Testowy = False
+        TRYB_Zaliczeniowy = False
+        return "q"
+    elif cmd == "h" or cmd == "H":
+        return HelpWypisywanie()
+    elif cmd == "z" or cmd == "Z" or cmd == "start":
+        return Tryb_Zaliczeniowy_funkcja_wprowadzajaca()
+    elif cmd == "t" or cmd == "T" or cmd == "ramka":
+        return Tryb_Testowy_funkcja_wprowadzajaca()
+
+# --------- funkcja ACK ---------
+def ACK_od_Arduino(cmd):
+    global TRYB_Zaliczeniowy, TRYB_Testowy
+
+    start_time = time.time()
+    ack_received = False
+
+    while time.time() - start_time < 5:  # 5 sekund
+        if arduino.in_waiting > 0:
+            response = arduino.readline().decode().strip()
+            if response:
+                print(f"IN| Arduino: {response}")
+                if response == "ACK":
+                    ack_received = True
+                    break
+        time.sleep(0.05)
+
+    if ack_received:
+        if TRYB_Zaliczeniowy:
+            Tryb_Zaliczeniowy_dzialanie(cmd)
+        elif TRYB_Testowy:
+            Tryb_Testowy_funkcja_dzialanie(cmd)
+    else:
+        print("Brak odpowiedzi ACK od Arduino")
 
 # --------- petla main ----------
 def main():
@@ -81,20 +204,10 @@ def main():
             cmd = InputUzytkownika()
             if cmd == 'q':
                 break
-            if cmd == "h":
+            if cmd == "h" or cmd == "k":
                 continue
-            if cmd == "p":
-                print("Ta ramka nie wprowadzi zmian, pomijam.")
-                continue
-
-            arduino.reset_input_buffer()
-            arduino.reset_output_buffer()
-            print(f"OUT| Wyslanie do arduino:     {cmd.replace("\n", "\\n")}")
-            arduino.write(cmd.encode())
-            arduino.flush()
 
             print("\n====================== Kolejna komenda ===================")
-
 
 
     except KeyboardInterrupt:

@@ -14,6 +14,13 @@ float distance_point = 25.0;
 int servo_zero = 0;
 int t = 150;
 
+float sumaBlad = 0.0;
+int iloscPomiarow = 0;
+unsigned long TimeZaliczeniowy;
+
+//jesli serwo poruszaloby sie w trybie testowym a nie powinno:
+// float ostatnieWychylenie = 0; 
+
 // -------------- flagi --------------
 bool TRYB_Zaliczeniowy = false;
 bool TRYB_Testowy = false;
@@ -35,11 +42,25 @@ void PID(){
   integral = integral+proportional*0.1;
   derivative=(proportional-previousError)/0.1;
   float output=kp*proportional+ki*integral+kd*derivative;
+
+  Serial.print("Distance: ");
   Serial.print(distance);
-  Serial.print(" : ");
+  Serial.print(" Proportional: ");
   Serial.print(proportional);
-  Serial.print(" : ");
-  Serial.println(output);
+  Serial.print(" Output: ");
+  Serial.print(output);
+  Serial.print(" | Kp: ");
+  Serial.print(kp);
+  Serial.print(", Ki: ");
+  Serial.print(ki);
+  Serial.print(", Kd: ");
+  Serial.print(kd);
+  Serial.print(", Distance_point: ");
+  Serial.print(distance_point);
+  Serial.print(", servo_zero: ");
+  Serial.print(servo_zero);
+  Serial.print(", t: ");
+  Serial.println(t);
   previousError=proportional;
   myservo.write(servo_zero+output);
 }
@@ -61,39 +82,88 @@ void setup() {
   Serial.println("Arduino polaczone poprawnie!");
 
   myTime = millis();
+  TimeZaliczeniowy = millis();
+}
+
+void Tryb_Zaliczeniowy_funkcja(){
+  unsigned long czas = millis() - TimeZaliczeniowy;
+
+  // jesli "s" jeszcze nie wyslane to czekaj
+  if(TimeZaliczeniowy == 0){
+    return;
+  }
+
+  if(czas <= 10000){ //dzialanie pid przez 10 sekund
+    petla();
+  }
+  else if (czas > 10000 && czas <= 13000){//zbieranie bledu do sredniej przez 3 s    
+    // zapamiętaj ostatnią pozycję serwa i ją zablokuj
+    // myservo.detach();
+
+    float blad = distance - distance_point;
+    sumaBlad += fabs(blad); // sumowanie bezwzglednego bledu
+    iloscPomiarow++;
+    Serial.print("iloscpomiarow: ");
+    Serial.print(iloscPomiarow);
+    Serial.print(" sumaBlad: ");
+    Serial.println(sumaBlad);
+  }
+  else if (czas > 13000){// koniec testu
+    float srednia = sumaBlad / iloscPomiarow;
+    sumaBlad = round(srednia * 100.0) / 100.0; // dla zostawienia 2 miejsc po przecinku
+
+    Serial.print("{DONE,");
+    Serial.print(sumaBlad);
+    Serial.print("}");
+
+    //reset flag i zmiennych
+    TRYB_Zaliczeniowy = false;
+    TRYB_Testowy = false;
+    TimeZaliczeniowy = 0;
+    sumaBlad = 0;
+    iloscPomiarow = 0;
+    myservo.attach(9);
+    return;
+  }
 }
 
 void loop() {
   //odebranie danych z portu
   if(Serial.available() > 0){
-    if(!TRYB_Zaliczeniowy && !TRYB_Testowy){
-      //sciagniecie z buffera
-      String cmd = Serial.readStringUntil("\n");
-      cmd.trim();
+    //sciagniecie z buffera
+    String cmd = Serial.readStringUntil("\n");
+    cmd.trim();
 
-      Serial.print("ARDUINO: Otrzymano: ");
-      Serial.println(cmd);
+    Serial.print("ARDUINO: Otrzymano: ");
+    Serial.println(cmd);
 
-      //sprawdzenie ktora z komend przyszla
-      if(cmd.startsWith("{ZAL") && cmd.indexOf("1")>0){
-        //zmiana flag
-        TRYB_Zaliczeniowy = true;
-        TRYB_Testowy = false;
-        Serial.println("ACK");
-      }
-      else if(cmd.startsWith("{TEST") && cmd.indexOf("1")>0){
-        //zmiana flag
-        TRYB_Zaliczeniowy = false;
-        TRYB_Testowy = true;
-        Serial.println("ACK");
-      }
+    //sprawdzenie ktora z komend przyszla
+    if(cmd.startsWith("{ZAL") && cmd.indexOf("1")>0){
+      //zmiana flag
+      TRYB_Zaliczeniowy = true;
+      TRYB_Testowy = false;
+
+      // pochylenie maksymalne w strone czujnika
+      myservo.write(servo_zero - 45); //todo do dostosowania
+
+      Serial.println("ACK");
+    }
+    else if(TRYB_Zaliczeniowy && cmd == "s"){
+      Serial.println("START"); //potwierdzenie startu
+      TimeZaliczeniowy = millis();
+    }
+    else if(cmd.startsWith("{TEST") && cmd.indexOf("1")>0){
+      //zmiana flag
+      TRYB_Zaliczeniowy = false;
+      TRYB_Testowy = true;
+      Serial.println("ACK");
     }
   }
 
 
   // --- uruchomienie petli do obslugi pochylni ----
   if(TRYB_Zaliczeniowy){
-    petla();
+    Tryb_Zaliczeniowy_funkcja();
   }
   else if (TRYB_Testowy){
     petla();

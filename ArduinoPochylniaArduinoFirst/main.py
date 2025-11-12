@@ -83,17 +83,43 @@ def Tryb_Zaliczeniowy_dzialanie(cmd):
     # # ■ wypisać wynik zaokrąglony do dwóch miejsc po przecinku i zakończyć sterowanie.
 
     #pochylenie pochylni w strone czujnika i oczekiwanei na komende do startu opdliczania
-    #todo wydanie polecenia aby kulka przesunela sie do czujnika
+    print("ZAL | Pochylenie w strone czujnika, kiedy gotowe, nacisnij s")
+
     kom = ""
     while True:
         kom = input("ZAL | oczekiwanie na komende 's': ")
         if kom == "s" or kom == "S":
             break
 
+    arduino.reset_input_buffer()
+    print("OUT | Wysylanie do arduino: s")
+    arduino.write(b"s\n")
+    arduino.flush()
+
+    print("ZAL | Start : 10 s stabilizacji, 3 s pomiaru bledu..")
+    wynik = None
+    start_time = time.time()
+
+    while time.time() - start_time < 15: #maksymalnie 15 s na calosc dla unikniecia nieskonczonej petli
+        if arduino.in_waiting > 0:
+            response = arduino.readline().decode().strip()
+            if response:
+                print(f"IN | Arduino: {response}")
+
+                #wykrycie konca testu
+                if response.startswith("{DONE"):
+                    try:
+                        wynikStr = response.split(",")[1].replace("}", "")
+                        wynik = float(wynikStr)
+                    except Exception:
+                        wynik = "!BLAD - niewlasciwa wartosc podczas konwersji"
+                    break
+        #todo zobaczyc time sleep ale nie powinno nic zwalniac programu
+
     #todo limit 10 s, potem nie ruszanie sie, 3 sekundy zbieranie bledu i obliczenie sredniej bezwzglednej
     #wypisac wynik zaokraglony do dwoch miejsc po przecinku i wyjsc z trybu zaliczeniowego
 
-    print("ZAL | zakonczono prodedure z wynikiem: {wynik}")
+    print(f"ZAL | zakonczono prodedure z wynikiem: {wynik}")
 
 def Tryb_Zaliczeniowy_funkcja_wprowadzajaca():
     global TRYB_Zaliczeniowy, TRYB_Testowy

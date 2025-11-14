@@ -191,13 +191,6 @@ void loop() {
     String cmd = Serial.readStringUntil("\n");
     cmd.trim();
 
-    Serial.print("Flagi: TRYB_Zaliczeniowy ")
-    Serial.print(TRYB_Zaliczeniowy)
-    Serial.print(", TRYB_Testowy: ")
-    Serial.print(TRYB_Testowy)
-    Serial.print("ARDUINO: Otrzymano: ");
-    Serial.println(cmd);
-
     //sprawdzenie ktora z komend przyszla
     if(cmd.startsWith("{ZAL") && cmd.indexOf("1")>0){
       //zmiana flag

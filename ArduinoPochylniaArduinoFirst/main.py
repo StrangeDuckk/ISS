@@ -1,5 +1,9 @@
 # pip install pyserial
 # pip install keyboard
+import msvcrt
+import threading
+from csv import excel
+
 import serial
 import serial.tools.list_ports
 import time
@@ -73,7 +77,7 @@ TRYB_Zaliczeniowy = False
 def HelpWypisywanie():
     print("todo help wypisywanie")
 
-def Tryb_Zaliczeniowy_dzialanie(cmd):
+def Tryb_Zaliczeniowy_dzialanie():
     global TRYB_Zaliczeniowy, TRYB_Testowy
     #Tryb zaliczeniowy: system zaczyna od pozycji lekko pochylonej w stronę czujnika,
     # tak aby kulka zsunęła się do czujnika, min. 10 sekund;
@@ -116,6 +120,7 @@ def Tryb_Zaliczeniowy_dzialanie(cmd):
 
     print(f"ZAL | zakonczono prodedure z wynikiem: {wynik}")
     TRYB_Zaliczeniowy = False
+    TRYB_Testowy = False
 
 def Tryb_Zaliczeniowy_funkcja_wprowadzajaca():
     global TRYB_Zaliczeniowy, TRYB_Testowy
@@ -139,12 +144,99 @@ def Tryb_Zaliczeniowy_funkcja_wprowadzajaca():
 
     return "k"
 
-def Tryb_Testowy_funkcja_dzialanie(cmd):
+def Tryb_Testowy_funkcja_dzialanie():
     # komunikacja z arduino do momentu nacisniecia q
     # todo mozliwosc ustawienia kp, ki, kd, distance_point, servo_zero, t rownoczesnie odbierajac wszystko
+    global TRYB_Testowy, TRYB_Zaliczeniowy
 
-    print("TEST | zakonczono prodedure")
-    pass
+    print("TEST | Sterowanie aktywne, po pomoc wyjdz z trybu \"q\" i wpisz \"h\" dla pomocy")
+
+    stopEvent = threading.Event()
+
+    def nasluch():
+        while not stopEvent.is_set():
+            response = arduino.readline().decode().strip()
+            if response:
+                print(f"TEST | Arduino: {response}")
+
+    nasluch_watek = threading.Thread(target=nasluch, daemon=True)
+    nasluch_watek.start()
+
+    try:
+        while True:
+            cmd = input("> ").strip().upper()
+            if cmd == "Q":
+                arduino.write(b"q\n")
+                print("TEST | zakonczono prodecure")
+
+                for i in range(3): #sciaganie ostatnich outputow od arduino, cos jeszcze wysylalo zanim dotarlo "q"
+                    response = arduino.readline().decode().strip()
+                    if response:
+                        print(f"TEST | Arduino: {response}")
+                break
+
+            elif any(cmd.startswith(command) for command in ["KP" , "KI", "KD", "DIST", "ZERO", "T"]):
+                #KI 3.2
+                chars = cmd.split()
+                if len(chars) == 2 and chars[1].replace('.', '', 1).isdigit():
+                    c = chars[0]
+                    v = chars[1]
+                    cmdToSend = f"{c} {v}\n"
+                    arduino.write(cmdToSend.encode())
+                    print(f"TEST | OUT: {cmdToSend}")
+                else:
+                    print(f"TEST | Niepoprawna komenda")
+
+            else:
+                print(f"TEST | komendy: KP, KI, KD, DIST, ZERO, T. format: \"KP 1.0\"")
+
+    except KeyboardInterrupt:
+        print("TEST | Except Keyboard Interrupt")
+    finally:
+        stopEvent.set()
+        nasluch_watek.join()
+
+    # userInput = ""
+    #
+    # while True:
+    #     # odbior wiadomosci od arduino
+    #     if arduino.in_waiting > 0:
+    #         response = arduino.readline().decode().strip()
+    #         if response:
+    #             print(f"TEST | Arduino: {response}")
+    #
+    #     #obsluga inputu od uzytkownika
+    #     if msvcrt.kbhit():
+    #         char = msvcrt.getch() #pobiera dokladnie jeden znak NIEBLOKUJAC Arduino
+    #
+    #         #w przypadku Entera -> wyslanie calej komendy
+    #         if char == "\r" or char == "\n":
+    #             cmd = userInput.strip()
+    #             userInput = ""
+    #
+    #             #zakonczenie programu
+    #             if cmd.lower() == "q":
+    #                 arduino.write(("q"+"\n").encode())
+    #                 arduino.flush()
+    #                 print("OUT | q")
+    #                 print("TEST | zakonczono prodedure")
+    #                 TRYB_Testowy = False
+    #                 TRYB_Zaliczeniowy = False
+    #                 return
+    #
+    #             #wysylanie do arduino komend
+    #             arduino.write((cmd+"\n").encode())
+    #             arduino.flush()
+    #             print(f"OUT | {cmd}")
+    #
+    #         elif char == "\b":
+    #             userInput = userInput[:-1]
+    #
+    #         #zwykly znak
+    #         else:
+    #             userInput += char
+    #             print("DODANO")
+
 
 def Tryb_Testowy_funkcja_wprowadzajaca():
     global TRYB_Zaliczeniowy, TRYB_Testowy
@@ -212,9 +304,9 @@ def ACK_od_Arduino(cmd):
 
     if ack_received:
         if TRYB_Zaliczeniowy:
-            Tryb_Zaliczeniowy_dzialanie(cmd)
+            Tryb_Zaliczeniowy_dzialanie()
         elif TRYB_Testowy:
-            Tryb_Testowy_funkcja_dzialanie(cmd)
+            Tryb_Testowy_funkcja_dzialanie()
     else:
         print("Brak odpowiedzi ACK od Arduino")
 

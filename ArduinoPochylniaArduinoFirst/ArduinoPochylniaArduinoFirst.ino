@@ -127,13 +127,74 @@ void Tryb_Zaliczeniowy_funkcja(){
   }
 }
 
+void Odbior_komendy(String cmd){
+  cmd.trim();
+  
+  if(cmd.startsWith("KP ")){
+    kp = cmd.substring(3).toFloat();
+    Serial.print("Ustawiono kp = ");
+    Serial.println(kp);
+  }
+  else if(cmd.startsWith("KI ")){
+    ki = cmd.substring(3).toFloat();
+    Serial.print("Ustawiono ki = ");
+    Serial.println(ki);
+  }
+  else if(cmd.startsWith("KD ")){
+    kd = cmd.substring(3).toFloat();
+    Serial.print("Ustawiono kd = ");
+    Serial.println(kd);
+  }
+  else if(cmd.startsWith("DIST ")){
+    distance_point = cmd.substring(5).toFloat();
+    Serial.print("Ustawiono distance_point = ");
+    Serial.println(distance_point);
+  }
+  else if(cmd.startsWith("ZERO ")){
+    servo_zero = cmd.substring(5).toFloat();
+    Serial.print("Ustawiono servo_zero = ");
+    Serial.println(servo_zero);
+  }
+  else if(cmd.startsWith("T ")){
+    t = cmd.substring(2).toFloat();
+    Serial.print("Ustawiono t = ");
+    Serial.println(t);
+  }
+  else{
+    Serial.println("!Wyslano niezrozumiala funkcje");
+  }
+}
+
+int Tryb_Testowy_funkcja(){
+  petla();
+
+  //Odbior komend od uzytkownika
+  if(Serial.available()>0){
+    String cmd = Serial.readStringUntil('\n');
+
+    if(cmd.startsWith("Q") || cmd.startsWith("q")){
+      TRYB_Zaliczeniowy = false;
+      TRYB_Testowy = false;
+      Serial.println("STOP");
+      return 0;
+    }
+
+    Odbior_komendy(cmd);
+  }
+}
+
 void loop() {
+
   //odebranie danych z portu
   if(Serial.available() > 0){
     //sciagniecie z buffera
     String cmd = Serial.readStringUntil("\n");
     cmd.trim();
 
+    Serial.print("Flagi: TRYB_Zaliczeniowy ")
+    Serial.print(TRYB_Zaliczeniowy)
+    Serial.print(", TRYB_Testowy: ")
+    Serial.print(TRYB_Testowy)
     Serial.print("ARDUINO: Otrzymano: ");
     Serial.println(cmd);
 
@@ -158,15 +219,20 @@ void loop() {
       TRYB_Testowy = true;
       Serial.println("ACK");
     }
+    else if(TRYB_Testowy && cmd == "q"){
+      Serial.println("Koniec trybu testowego"); //zakonczenie trybu testowego
+      TRYB_Zaliczeniowy = false;
+      TRYB_Testowy = false;
+    }
   }
-
 
   // --- uruchomienie petli do obslugi pochylni ----
   if(TRYB_Zaliczeniowy){
     Tryb_Zaliczeniowy_funkcja();
   }
   else if (TRYB_Testowy){
-    petla();
+    Tryb_Testowy_funkcja();
   }
+
 }
 

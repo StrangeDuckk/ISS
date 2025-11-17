@@ -127,42 +127,65 @@ void Tryb_Zaliczeniowy_funkcja(){
   }
 }
 
-void Odbior_komendy(String cmd){
+String Odbior_komendy(String cmd){
   cmd.trim();
+  String temp = "";
   
   if(cmd.startsWith("KP ")){
     kp = cmd.substring(3).toFloat();
-    Serial.print("Ustawiono kp = ");
-    Serial.println(kp);
+    temp += "Ustawiono kp =";
+    temp += String(kp);
+    temp += "\n"
+    // Serial.print("Ustawiono kp = ");
+    // Serial.print(kp);
   }
   else if(cmd.startsWith("KI ")){
     ki = cmd.substring(3).toFloat();
-    Serial.print("Ustawiono ki = ");
-    Serial.println(ki);
+    temp += "Ustawiono ki =";
+    temp += String(ki);
+    temp += "\n"
+    // Serial.print("Ustawiono ki = ");
+    // Serial.print(ki);
   }
   else if(cmd.startsWith("KD ")){
     kd = cmd.substring(3).toFloat();
-    Serial.print("Ustawiono kd = ");
-    Serial.println(kd);
+    temp += "Ustawiono kd =";
+    temp += String(kd);
+    temp += "\n"
+    // Serial.print("Ustawiono kd = ");
+    // Serial.print(kd);
   }
   else if(cmd.startsWith("DIST ")){
     distance_point = cmd.substring(5).toFloat();
-    Serial.print("Ustawiono distance_point = ");
-    Serial.println(distance_point);
+    temp += "Ustawiono distance_point =";
+    temp += String(distance_point);
+    temp += "\n"
+    // Serial.print("Ustawiono distance_point = ");
+    // Serial.print(distance_point);
   }
   else if(cmd.startsWith("ZERO ")){
     servo_zero = cmd.substring(5).toFloat();
-    Serial.print("Ustawiono servo_zero = ");
-    Serial.println(servo_zero);
+    temp += "Ustawiono servo_zero =";
+    temp += String(servo_zero);
+    temp += "\n"
+    // Serial.print("Ustawiono servo_zero = ");
+    // Serial.print(servo_zero);
   }
   else if(cmd.startsWith("T ")){
     t = cmd.substring(2).toFloat();
-    Serial.print("Ustawiono t = ");
-    Serial.println(t);
+    temp += "Ustawiono t =";
+    temp += String(t);
+    temp += "\n"
+    // Serial.print("Ustawiono t = ");
+    // Serial.print(t);
   }
   else{
-    Serial.println("!Wyslano niezrozumiala funkcje");
+    temp += "!Wyslano niezrozumiala funkcje";
+    temp += "\n"
+    // Serial.print("!Wyslano niezrozumiala funkcje");
   }
+  // Serial.println();
+  return temp;
 }
 
 int Tryb_Testowy_funkcja(){
@@ -179,9 +202,10 @@ int Tryb_Testowy_funkcja(){
       return 0;
     }
 
-    Odbior_komendy(cmd);
+    Serial.println(Odbior_komendy(cmd));
   }
 }
+
 
 void loop() {
 
@@ -192,7 +216,34 @@ void loop() {
     cmd.trim();
 
     //sprawdzenie ktora z komend przyszla
-    if(cmd.startsWith("{ZAL") && cmd.indexOf("1")>0){
+    if(cmd.startsWith("{RAM")){
+      //{RAM, KP 10.0,\n}
+      TRYB_Zaliczeniowy = false;
+      TRYB_Testowy = false;
+
+      Serial.println("ACK");
+
+      cmd.remove(0,5); // "{RAM, "
+      String doOdeslania = "";
+      
+      //rozbicie po przecinkach:
+      int start = 0;
+      while (true){
+        int przecinek = cmd.indexOf(",", start);
+        if( przecinek == -1)
+          break;
+
+        String sub = cmd.substring(start, przecinek);
+        sub.trim();
+        if(sub.length() > 0){
+          doOdeslania+= Odbior_komendy(sub);
+        }
+        start = przecinek +1;
+      }
+      Serial.println(doOdeslania);
+
+    }
+    else if(cmd.startsWith("{ZAL") && cmd.indexOf("1")>0){
       //zmiana flag
       TRYB_Zaliczeniowy = true;
       TRYB_Testowy = false;

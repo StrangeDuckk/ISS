@@ -1,9 +1,6 @@
 # pip install pyserial
 # pip install keyboard
-import msvcrt
 import threading
-from csv import excel
-
 import serial
 import serial.tools.list_ports
 import time
@@ -75,7 +72,37 @@ TRYB_Zaliczeniowy = False
 
 # --------- metody komunikacyjne -------------
 def HelpWypisywanie():
-    print("todo help wypisywanie")
+    print("-------------------------Help-------------------------------\n"
+          "------------------pochylnia / balanser----------------------\n"
+          "- T -> Tryb testowy:\n"
+          "użytkownik wpisuje T (lub t) aby wejsc do trybu testowego, \n"
+          "podczas dzialania trybu testowego moze stroic urzadzenie wpisujac komendy:\n"
+          "KP -> edycja kp <float (0.0, 10.0)>, np. KP 2.5\n"
+          "KI -> edycja ki <float (0.0, 10.0)>, np. KI 0.02\n"
+          "KD -> edycja kd <float (0.0, 10.0)>, np. KD 10.0\n"
+          "DIST -> docelowa odleglosc od czujnika <int>, np. DIST 25\n"
+          "ZERO -> wartosc 0 dla serwo <int>, np. ZERO 52\n"
+          "T -> edycja t <int (100,200)>, np. T 150\n"
+          "-------------------------------------------------------------\n"
+          "- Z -> Tryb zaliczeniowy:\n"
+          "system zaczyna od pozycji lekko pochylonej w stronę czujnika\n"
+          "tak aby kulka zsunęła się do czujnika, min. 10 sekundn\n"
+          "po wydaniu komendy regulator ma:\n"
+          "w ≤ 10 s ustawić kulkę na TARGET,\n"
+          "następnie przez 3 s logować błąd i obliczyć średnią z modułu błędu bezwzględnego,\n"
+          "wypisać wynik zaokrąglony do dwóch miejsc po przecinku i zakończyć sterowanie.\n"
+          "-------------------------------------------------------------\n"
+          "- R -> wyslanie ramki\n"
+          "Ustawienie wartosci \"na sucho\" \n"
+          "KP -> edycja kp <float (0.0, 10.0)>, np. KP 2.5\n"
+          "KI -> edycja ki <float (0.0, 10.0)>, np. KI 0.02\n"
+          "KD -> edycja kd <float (0.0, 10.0)>, np. KD 10.0\n"
+          "DIST -> docelowa odleglosc od czujnika <int>, np. DIST 25\n"
+          "ZERO -> wartosc 0 dla serwo <int>, np. ZERO 52\n"
+          "T -> edycja t <int (100,200)>, np. T 150\n"
+          "-------------------------------------------------------------\n"
+          )
+
 
 def Tryb_Zaliczeniowy_dzialanie():
     global TRYB_Zaliczeniowy, TRYB_Testowy
@@ -140,13 +167,12 @@ def Tryb_Zaliczeniowy_funkcja_wprowadzajaca():
     arduino.flush()
 
     #oczekiwanie na ACK:
-    ACK_od_Arduino(cmd) #tutaj uruchomienie funkcji Tryb_Zaliczeniowy_dzialanie()
+    ACK_od_Arduino() #tutaj uruchomienie funkcji Tryb_Zaliczeniowy_dzialanie()
 
     return "k"
 
 def Tryb_Testowy_funkcja_dzialanie():
     # komunikacja z arduino do momentu nacisniecia q
-    # todo mozliwosc ustawienia kp, ki, kd, distance_point, servo_zero, t rownoczesnie odbierajac wszystko
     global TRYB_Testowy, TRYB_Zaliczeniowy
 
     print("TEST | Sterowanie aktywne, po pomoc wyjdz z trybu \"q\" i wpisz \"h\" dla pomocy")
@@ -196,47 +222,6 @@ def Tryb_Testowy_funkcja_dzialanie():
         stopEvent.set()
         nasluch_watek.join()
 
-    # userInput = ""
-    #
-    # while True:
-    #     # odbior wiadomosci od arduino
-    #     if arduino.in_waiting > 0:
-    #         response = arduino.readline().decode().strip()
-    #         if response:
-    #             print(f"TEST | Arduino: {response}")
-    #
-    #     #obsluga inputu od uzytkownika
-    #     if msvcrt.kbhit():
-    #         char = msvcrt.getch() #pobiera dokladnie jeden znak NIEBLOKUJAC Arduino
-    #
-    #         #w przypadku Entera -> wyslanie calej komendy
-    #         if char == "\r" or char == "\n":
-    #             cmd = userInput.strip()
-    #             userInput = ""
-    #
-    #             #zakonczenie programu
-    #             if cmd.lower() == "q":
-    #                 arduino.write(("q"+"\n").encode())
-    #                 arduino.flush()
-    #                 print("OUT | q")
-    #                 print("TEST | zakonczono prodedure")
-    #                 TRYB_Testowy = False
-    #                 TRYB_Zaliczeniowy = False
-    #                 return
-    #
-    #             #wysylanie do arduino komend
-    #             arduino.write((cmd+"\n").encode())
-    #             arduino.flush()
-    #             print(f"OUT | {cmd}")
-    #
-    #         elif char == "\b":
-    #             userInput = userInput[:-1]
-    #
-    #         #zwykly znak
-    #         else:
-    #             userInput += char
-    #             print("DODANO")
-
 
 def Tryb_Testowy_funkcja_wprowadzajaca():
     global TRYB_Zaliczeniowy, TRYB_Testowy
@@ -256,21 +241,56 @@ def Tryb_Testowy_funkcja_wprowadzajaca():
     arduino.flush()
 
     # oczekiwanie na ACK:
-    ACK_od_Arduino(cmd) #tutaj uruchomienie funkcji Tryb_Testowy_funkcja_dzialanie
+    ACK_od_Arduino() #tutaj uruchomienie funkcji Tryb_Testowy_funkcja_dzialanie
 
     return "k"
 
+def PisanieRamki():
+    global TRYB_Zaliczeniowy, TRYB_Testowy
+    TRYB_Zaliczeniowy = False
+    TRYB_Testowy = False
+    print("-------- URUCHOMIONO PISANIE RAMKI ---------")
+    print(f"RAM | komendy: KP, KI, KD, DIST, ZERO, T. format: \"KP 1.0\"")
+
+    cmdDoWyslania = "{RAM, "
+    while True:
+        cmd = input("> ").strip().upper()
+        if cmd == "Q":
+            print("RAM | zakonczono prodecure pisania ramki")
+            break
+
+        elif any(cmd.startswith(command) for command in ["KP", "KI", "KD", "DIST", "ZERO", "T"]):
+            # KI 3.2
+            chars = cmd.split()
+            if len(chars) == 2 and chars[1].replace('.', '', 1).isdigit():
+                c = chars[0]
+                v = chars[1]
+                cmdToSend = f"{c} {v},"
+                cmdDoWyslania += cmdToSend
+            else:
+                print(f"RAM | Niepoprawna komenda, komendy: KP, KI, KD, DIST, ZERO, T. format: \"KP 1.0\"")
+
+        else:
+            print(f"RAM | komendy: KP, KI, KD, DIST, ZERO, T. format: \"KP 1.0\"")
+    cmdDoWyslania+="\n"
+    arduino.write(cmdDoWyslania.encode())
+    print(f"TEST | OUT: {cmdDoWyslania.replace('\n', '\\n}')}")
+
+    ACK_od_Arduino()
+
+    return "k"
 
 def InputUzytkownika():
     # wysyłanie danych do Arduino    Podaj predkosc (0-255) do Arduino
     cmd = ""
-    while cmd not in ("q", "Q", "h", "H", "z", "Z", "t", "T"):
+    while cmd not in ("q", "Q", "h", "H", "z", "Z", "t", "T", "r", "R"):
         cmd = input(
             "========================================\n"
             "Wpisz \n"
             "h lub p dla pomocy,\n"
             "z dla trybu zaliczeniowego,\n"
             "t dla trybu testowego, \n"
+            "r dla zmiany wartosci \n"
             "q zeby zakonczyc:\n$")
 
     if cmd == "q" or cmd == "Q":
@@ -282,11 +302,13 @@ def InputUzytkownika():
         return HelpWypisywanie()
     elif cmd == "z" or cmd == "Z" or cmd == "start":
         return Tryb_Zaliczeniowy_funkcja_wprowadzajaca()
-    elif cmd == "t" or cmd == "T" or cmd == "ramka":
+    elif cmd == "t" or cmd == "T":
         return Tryb_Testowy_funkcja_wprowadzajaca()
+    elif cmd == "r" or cmd == "R":
+        return PisanieRamki()
 
 # --------- funkcja ACK ---------
-def ACK_od_Arduino(cmd):
+def ACK_od_Arduino():
     global TRYB_Zaliczeniowy, TRYB_Testowy
 
     start_time = time.time()
@@ -307,6 +329,19 @@ def ACK_od_Arduino(cmd):
             Tryb_Zaliczeniowy_dzialanie()
         elif TRYB_Testowy:
             Tryb_Testowy_funkcja_dzialanie()
+        else:
+            if arduino.in_waiting > 0:
+                response = arduino.readline().decode().strip()
+                if response:
+                    print(f"IN | Arduino: {response}")
+
+                    # # wykrycie konca testu
+                    # if response.startswith("{DONE"):
+                    #     try:
+                    #         wynikStr = response.split(",")[1].replace("}", "")
+                    #         wynik = float(wynikStr)
+                    #     except Exception:
+                    #         wynik = "!BLAD - niewlasciwa wartosc podczas konwersji"
     else:
         print("Brak odpowiedzi ACK od Arduino")
 
@@ -335,16 +370,3 @@ def main():
 # ---- wywolanie funkcji main ----
 if __name__ == "__main__":
     main()
-
-#todo
-# - help
-# - Zaimplementujcie co najmniej poniższe polecenia i odpowiedzi:
-# 1. Ustawienie odległości od czujnika
-# 2. Ustawienie Kp, Ki, Kd (float).
-# 3. Ustawienie wartości zero serwomechanizmu.
-# 4. Uruchomienie trybu testowego do strojenia.
-# 5. Tryb zaliczeniowy: system zaczyna od pozycji lekko pochylonej w stronę czujnika, tak aby kulka zsunęła się do czujnika, min. 10 sekund lub dalsza część po komendzie;
-# po wydaniu komendy regulator ma:
-# ■ w ≤ 10 s ustawić kulkę na TARGET,
-# ■ następnie przez 3 s logować błąd i obliczyć średnią z modułu błędu bezwzględnego,
-# ■ wypisać wynik zaokrąglony do dwóch miejsc po przecinku i zakończyć sterowanie.

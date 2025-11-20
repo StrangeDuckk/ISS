@@ -4,15 +4,15 @@
 unsigned long myTime;
 Servo myservo;
 float distance;
-float kp = 2.0;
-float ki = 0.20;
-float kd = 4.0;
+float kp = 2.5;//2.3    1.0     1.75  1.0    2.5
+float ki = 0.04;//0.04  0.04    0.25  0.01    0.04
+float kd = 2.0;//10.0   1.0     10    1.0     2.0
 float integral = 0.0;
 float derivative = 0.0;
 float previousError = 0.0;
-float distance_point = 25.0;
-int servo_zero = 0;
-int t = 150;
+float distance_point = 26.0;
+int servo_zero = 76;//          76    82
+int t = 100; //                 10    100
 
 float sumaBlad = 0.0;
 int iloscPomiarow = 0;
@@ -99,9 +99,9 @@ void Tryb_Zaliczeniowy_funkcja(){
   else if (czas > 10000 && czas <= 13000){//zbieranie bledu do sredniej przez 3 s    
     // zapamiętaj ostatnią pozycję serwa i ją zablokuj
     // myservo.detach();
+    petla();
 
-    float blad = distance - distance_point;
-    sumaBlad += fabs(blad); // sumowanie bezwzglednego bledu
+    sumaBlad += fabs(distance-distance_point); // sumowanie bezwzglednego bledu
     iloscPomiarow++;
     Serial.print("iloscpomiarow: ");
     Serial.print(iloscPomiarow);
@@ -111,7 +111,7 @@ void Tryb_Zaliczeniowy_funkcja(){
   else if (czas > 13000){// koniec testu
     float srednia = sumaBlad / iloscPomiarow;
     sumaBlad = round(srednia * 100.0) / 100.0; // dla zostawienia 2 miejsc po przecinku
-
+    
     Serial.print("{DONE,");
     Serial.print(sumaBlad);
     Serial.print("}");
@@ -135,56 +135,42 @@ String Odbior_komendy(String cmd){
     kp = cmd.substring(3).toFloat();
     temp += "Ustawiono kp =";
     temp += String(kp);
-    temp += "\n"
-    // Serial.print("Ustawiono kp = ");
-    // Serial.print(kp);
+    temp += "\n";
   }
   else if(cmd.startsWith("KI ")){
     ki = cmd.substring(3).toFloat();
     temp += "Ustawiono ki =";
     temp += String(ki);
-    temp += "\n"
-    // Serial.print("Ustawiono ki = ");
-    // Serial.print(ki);
+    temp += "\n";
   }
   else if(cmd.startsWith("KD ")){
     kd = cmd.substring(3).toFloat();
     temp += "Ustawiono kd =";
     temp += String(kd);
-    temp += "\n"
-    // Serial.print("Ustawiono kd = ");
-    // Serial.print(kd);
+    temp += "\n";
   }
   else if(cmd.startsWith("DIST ")){
     distance_point = cmd.substring(5).toFloat();
     temp += "Ustawiono distance_point =";
     temp += String(distance_point);
-    temp += "\n"
-    // Serial.print("Ustawiono distance_point = ");
-    // Serial.print(distance_point);
+    temp += "\n";
   }
   else if(cmd.startsWith("ZERO ")){
     servo_zero = cmd.substring(5).toFloat();
     temp += "Ustawiono servo_zero =";
     temp += String(servo_zero);
-    temp += "\n"
-    // Serial.print("Ustawiono servo_zero = ");
-    // Serial.print(servo_zero);
+    temp += "\n";
   }
   else if(cmd.startsWith("T ")){
     t = cmd.substring(2).toFloat();
     temp += "Ustawiono t =";
     temp += String(t);
-    temp += "\n"
-    // Serial.print("Ustawiono t = ");
-    // Serial.print(t);
+    temp += "\n";
   }
   else{
     temp += "!Wyslano niezrozumiala funkcje";
-    temp += "\n"
-    // Serial.print("!Wyslano niezrozumiala funkcje");
+    temp += "\n";
   }
-  // Serial.println();
   return temp;
 }
 
@@ -249,7 +235,7 @@ void loop() {
       TRYB_Testowy = false;
 
       // pochylenie maksymalne w strone czujnika
-      myservo.write(servo_zero - 45); //todo do dostosowania
+      myservo.write(servo_zero + 45); //todo do dostosowania
 
       Serial.println("ACK");
     }

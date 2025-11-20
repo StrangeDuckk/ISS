@@ -1,6 +1,8 @@
 # pip install pyserial
 # pip install keyboard
 import threading
+from unittest import skipIf
+
 import serial
 import serial.tools.list_ports
 import time
@@ -69,6 +71,7 @@ PolacznieZArduino(arduino)
 # ---------- FLAGI -----------
 TRYB_Testowy = False
 TRYB_Zaliczeniowy = False
+wynikGlobal = 0.0
 
 # --------- metody komunikacyjne -------------
 def HelpWypisywanie():
@@ -104,8 +107,8 @@ def HelpWypisywanie():
           )
 
 
-def Tryb_Zaliczeniowy_dzialanie():
-    global TRYB_Zaliczeniowy, TRYB_Testowy
+def Tryb_Zaliczeniowy_dzialanie(kom):
+    global TRYB_Zaliczeniowy, TRYB_Testowy, wynikGlobal
     #Tryb zaliczeniowy: system zaczyna od pozycji lekko pochylonej w stronę czujnika,
     # tak aby kulka zsunęła się do czujnika, min. 10 sekund;
     # po wydaniu komendy regulator ma:
@@ -116,10 +119,11 @@ def Tryb_Zaliczeniowy_dzialanie():
     #pochylenie pochylni w strone czujnika i oczekiwanei na komende do startu opdliczania
     print("ZAL | Pochylenie w strone czujnika, kiedy gotowe, nacisnij s")
 
-    while True:
-        kom = input("ZAL | oczekiwanie na komende 's': ")
-        if kom == "s" or kom == "S":
-            break
+    if kom is None:
+        while True:
+            kom = input("ZAL | oczekiwanie na komende 's': ")
+            if kom == "s" or kom == "S":
+                break
 
     arduino.reset_input_buffer()
     print("OUT | Wysylanie do arduino: s")
@@ -140,16 +144,17 @@ def Tryb_Zaliczeniowy_dzialanie():
                 if response.startswith("{DONE"):
                     try:
                         wynikStr = response.split(",")[1].replace("}", "")
-                        wynik = float(wynikStr)
+                        wynik = float(wynikStr)*10
                     except Exception:
                         wynik = "!BLAD - niewlasciwa wartosc podczas konwersji"
                     break
 
-    print(f"ZAL | zakonczono prodedure z wynikiem: {wynik}")
+    print(f"ZAL | zakonczono prodedure z wynikiem: {wynik} mm")
     TRYB_Zaliczeniowy = False
     TRYB_Testowy = False
+    wynikGlobal = wynik
 
-def Tryb_Zaliczeniowy_funkcja_wprowadzajaca():
+def Tryb_Zaliczeniowy_funkcja_wprowadzajaca(AutoKom = None):
     global TRYB_Zaliczeniowy, TRYB_Testowy
     TRYB_Zaliczeniowy = True
     TRYB_Testowy = False
@@ -167,7 +172,7 @@ def Tryb_Zaliczeniowy_funkcja_wprowadzajaca():
     arduino.flush()
 
     #oczekiwanie na ACK:
-    ACK_od_Arduino() #tutaj uruchomienie funkcji Tryb_Zaliczeniowy_dzialanie()
+    ACK_od_Arduino(AutoKom) #tutaj uruchomienie funkcji Tryb_Zaliczeniowy_dzialanie()
 
     return "k"
 
@@ -245,10 +250,19 @@ def Tryb_Testowy_funkcja_wprowadzajaca():
 
     return "k"
 
-def PisanieRamki():
+def PisanieRamki(GotowaRamka = None):
     global TRYB_Zaliczeniowy, TRYB_Testowy
     TRYB_Zaliczeniowy = False
     TRYB_Testowy = False
+
+    if GotowaRamka is not None:
+        print(f"OUT | {GotowaRamka}")
+        arduino.reset_input_buffer()
+        arduino.write(GotowaRamka.encode())
+        arduino.flush()
+        ACK_od_Arduino()
+        return
+
     print("-------- URUCHOMIONO PISANIE RAMKI ---------")
     print(f"RAM | komendy: KP, KI, KD, DIST, ZERO, T. format: \"KP 1.0\"")
 
@@ -280,10 +294,113 @@ def PisanieRamki():
 
     return "k"
 
+def AutomatyczneWyszukiwanieWartosci():
+    global TRYB_Zaliczeniowy, TRYB_Testowy, wynikGlobal
+    TRYB_Zaliczeniowy = False
+    TRYB_Testowy = False
+
+    def testPID(kpPID,kiPID,kdPID):
+        global wynikGlobal
+        print(f"A| test pid | kp: {kpPID},ki: {kiPID},kd: {kdPID}")
+        gotowaRamka = f"{{RAM, KP {kpPID}, KI {kiPID}, KD {kdPID}, DIST {DIST}, ZERO {ZERO}, T {T}}}\n"
+        PisanieRamki(GotowaRamka=gotowaRamka)
+        Tryb_Zaliczeniowy_funkcja_wprowadzajaca("s")#dla wprowadzenia s, bez czekania na input uzytkownika
+        print(f"Wynik: {wynikGlobal}")
+        return wynikGlobal
+
+    def frange(start, stop, step):
+        #tworzenie zakresu floatow po ktorych ma chodzic program
+        count = int(round((stop - start) / step))+1
+        return [start + i * step for i in range(count)]
+
+    def przeszukaj(kp_range, ki_range, kd_range):
+        wyniki = []
+        for Kp in kp_range:
+            for Ki in ki_range:
+                for Kd in kd_range:
+                    result = testPID(Kp,Ki,Kd)
+                    if result is not None:
+                        wyniki.append((result, Kp, Ki, Kd))
+        wyniki.sort(key=lambda x: x[0])
+        return wyniki
+
+    # -------- stale ----------
+    DIST = 25
+    ZERO = 82
+    T = 150
+
+    # ------- manipulacyjne -------
+    KP = 0.00
+    Max_KP = 3.0
+    KI = 0.00
+    Max_KI = 0.5
+    KD = 1.00
+    Max_KD = 4.0
+
+    print("=========== AUTOMATYCZNE STROJENIE =============\n")
+    #wysylanie ramki bazowej do strojenia
+    ramka = f"{{RAM, KP {KP},KI {KI},KD {KD},DIST {DIST}, ZERO {ZERO}, T {T},\n"
+    PisanieRamki(GotowaRamka=ramka)
+
+    # def wykonaj Zaliczenie jako -> Tryb_Zaliczeniowy_funkcja_wprowadzajaca("s")
+
+    # Etap 1 --------------- GRUBE SKANOWANIE --------------------
+    print("A | ----------- Grube Skanowanie -------------")
+    # print(list(frange(0, 8, 0.5)))
+    wyniki1 = przeszukaj(
+        kd_range=frange(KD, Max_KD, 0.5),
+        ki_range=frange(KI, Max_KI, 0.5),
+        kp_range=frange(KP, Max_KP, 0.5),
+    )
+
+    top5_etap1 = wyniki1[:5]
+    print("najlepsze z 1 etapu: ")
+    for wynik in top5_etap1:
+        print(wynik)
+
+    # Etap 2 --------------- Dokladne skanowanie przy TOP 5 --------------------
+    print("A | --------- Dokladne skanowanie przy TOP 5 -----------")
+    wyniki2 = []
+
+    for result, KP0, KI0, KD0 in top5_etap1:
+        wyniki2 += przeszukaj(
+            kp_range=frange(KP0 - 0.5, KP0 + 0.5, 0.1),
+            ki_range=frange(KI0 - 0.1, KI0 + 0.1, 0.02),
+            kd_range=frange(KD0 - 0.5, KD0 + 0.5, 0.1),
+        )
+
+    wyniki2.sort(key=lambda x: x[0])
+    top_etap2 = wyniki2[0]
+    print("A | najlepszy z 2 etapu:", top_etap2)
+
+    # --------------- ETAP 3 – ultra precyzja ---------------
+
+    print("A | === ETAP 3: Ultra precyzyjne skanowanie ===")
+    result, KP0, KI0, KD0 = top_etap2
+
+    wyniki3 = przeszukaj(
+        kp_range=frange(KP0 - 0.1, KP0 + 0.1, 0.02),
+        ki_range=frange(KI0 - 0.02, KI0 + 0.02, 0.005),
+        kd_range=frange(KD0 - 0.1, KD0 + 0.1, 0.02),
+    )
+
+    wyniki3.sort(key=lambda x: x[0])
+    best3 = wyniki3[0]
+
+    # ----------------- KONIEC ---------------------
+
+    print("A | ===== OSTATECZNY WYNIK =====")
+    print(f"Najlepszy błąd: {best3[0]}")
+    print(f"KP={best3[1]}, KI={best3[2]}, KD={best3[3]}")
+    print("===== KONIEC STROJENIA =====\n")
+
+    return best3
+
+
 def InputUzytkownika():
     # wysyłanie danych do Arduino    Podaj predkosc (0-255) do Arduino
     cmd = ""
-    while cmd not in ("q", "Q", "h", "H", "z", "Z", "t", "T", "r", "R"):
+    while cmd not in ("q", "Q", "h", "H", "z", "Z", "t", "T", "r", "R", "a", "A"):
         cmd = input(
             "========================================\n"
             "Wpisz \n"
@@ -306,9 +423,11 @@ def InputUzytkownika():
         return Tryb_Testowy_funkcja_wprowadzajaca()
     elif cmd == "r" or cmd == "R":
         return PisanieRamki()
+    elif cmd == "a" or cmd == "A":
+        return AutomatyczneWyszukiwanieWartosci()
 
 # --------- funkcja ACK ---------
-def ACK_od_Arduino():
+def ACK_od_Arduino(AutoKom = None):
     global TRYB_Zaliczeniowy, TRYB_Testowy
 
     start_time = time.time()
@@ -326,7 +445,7 @@ def ACK_od_Arduino():
 
     if ack_received:
         if TRYB_Zaliczeniowy:
-            Tryb_Zaliczeniowy_dzialanie()
+            Tryb_Zaliczeniowy_dzialanie(AutoKom)
         elif TRYB_Testowy:
             Tryb_Testowy_funkcja_dzialanie()
         else:
@@ -335,13 +454,6 @@ def ACK_od_Arduino():
                 if response:
                     print(f"IN | Arduino: {response}")
 
-                    # # wykrycie konca testu
-                    # if response.startswith("{DONE"):
-                    #     try:
-                    #         wynikStr = response.split(",")[1].replace("}", "")
-                    #         wynik = float(wynikStr)
-                    #     except Exception:
-                    #         wynik = "!BLAD - niewlasciwa wartosc podczas konwersji"
     else:
         print("Brak odpowiedzi ACK od Arduino")
 

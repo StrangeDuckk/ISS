@@ -1,15 +1,32 @@
 #include "TRSensors.h"
 
+// ------------------------ parametry do zmian w ramce ----------------------
 #define PIN_LEFT_MOTOR_SPEED 5
-int PIN_LEFT_MOTOR_FORWARD A1 //default A0
-int PIN_LEFT_MOTOR_REVERSE A0 //default A1
+int PIN_LEFT_MOTOR_FORWARD = A1; //default A0
+int PIN_LEFT_MOTOR_REVERSE = A0; //default A1
 #define PIN_LEFT_ENCODER 2
    
 #define PIN_RIGHT_MOTOR_SPEED 6
-int PIN_RIGHT_MOTOR_FORWARD A3 //default A2           
-int PIN_RIGHT_MOTOR_REVERSE A2 //default A3
+int PIN_RIGHT_MOTOR_FORWARD = A3; //default A2           
+int PIN_RIGHT_MOTOR_REVERSE = A2; //default A3
 #define PIN_RIGHT_ENCODER 3
 
+float Kp = 0.0; //wzmocnienie proporcjonalne
+float Ki = 0.0; //wzmocnienie calkujaca
+float Kd = 0.0; //wzmocnienie rozniczkujace
+int t = 100;    //czas reakcji zakres 50-300
+int czasProbkowaniaPID = 5; //5 sekund na probkowanie
+// zmienne PID
+float derivative = 0.0;
+float previousError = 0.0;
+float error = 0.0;
+float output = 0.0;
+// FLAGI
+bool TRYB_JAZDY = false;
+bool TRYB_KALIBRACYJNY = false;
+float Vref = 150.0; //base speed
+
+// ---------------------------------- stale ----------------------------------
 #define NUM_SENSORS 5
 TRSensors trs =   TRSensors();
 unsigned int sensorValues[NUM_SENSORS];
@@ -20,6 +37,10 @@ unsigned long myTime;
 int left_encoder_count=0;
 int right_encoder_count=0;
 
+float PWM_L = 0.0;
+float PWM_R = 0.0;
+
+
 void left_encoder(){
   left_encoder_count++;  
 }
@@ -28,6 +49,32 @@ void right_encoder(){
   right_encoder_count++;  
 }
 
+// ------------------------ Funkcje ------------------------
+void PID(){
+  unsigned int position = trs.readLine(sensorValues);
+  int proportional = (int)position - 2000;
+  integral = integral+proportional*0.1;
+  derivative=(proportional-previousError)/0.1;
+  float output=Kp*proportional+Ki*integral+Kd*derivative;
+
+  Serial.print("Kp: ");
+  Serial.print(Kp);
+  Serial.print(", Ki: ");
+  Serial.print(Ki);
+  Serial.print(", Kd: ");
+  Serial.print(Kd);
+  Serial.print(", Vref: ");
+  Serial.print(Vref);
+  Serial.print(", t: ");
+  Serial.println(t);
+  previousError=proportional;
+  
+  PWM_L = Vref - output;
+  PWM_R - Vref + output;
+}
+
+
+// -----------------------------------------------------------------
 void setup(){
   Serial.begin(115200);
   Serial.println("TRSensor example");

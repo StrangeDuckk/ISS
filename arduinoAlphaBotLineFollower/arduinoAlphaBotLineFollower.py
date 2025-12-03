@@ -66,7 +66,7 @@ print(f"Logowanie rozpoczete do pliku: {log_filename}")
 
 # ------------------------- stałe ----------------------
 PORT = WykrywaniePortu() #wyjsciowo bylo com4
-BAUDRATE = 9600
+BAUDRATE = 115200
 PONAWIANIE_LIMIT = 3 #3 razy program probuje ponowic polaczenie
 TIMEOUT_CONNECTION = 100
 TIMEOUT_RESPONSE = 100
@@ -128,6 +128,7 @@ def HelpWypisywanie():
           )#todo help
 
 def PisanieRamki():
+    #todo napisac od nowa, taka jak w zadaniu P1
     global TRYB_JAZDY
     TRYB_JAZDY = False
 

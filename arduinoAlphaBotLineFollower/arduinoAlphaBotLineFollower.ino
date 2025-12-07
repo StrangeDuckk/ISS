@@ -17,18 +17,31 @@ float Kd = 2.8;
 long integral = 0;
 int lastError = 0;
 float derivative = 0;
-// float D_filter = 0;
-// float D_alpha = 0.2; // filtr dolnoprzepustowy D
 int SPEED = 75;
 int updateTime = 10; // ms
 unsigned long lastPID = 0;
+
+bool czyJechac = false;
+unsigned long czasOdUruchomienia = millis();
+bool czyBylaAkcja = false;
+bool czyLoopWypisalJednorazowo = false;
+bool czyBylaKalibracja = false;
 
 
 // Serial command buffer
 #define CMD_BUF_SIZE 32
 char cmdBuf[CMD_BUF_SIZE];
 uint8_t cmdIndex = 0;
+
+void Kalibracja(){
+  Serial.println("Kalibruje TRSensors");
+  for (int i = 0; i < 400; i++) 
+    trs.calibrate();
+  Serial.println("Kalibracja zakonczona");
+}
+
 void setup() {
+  unsigned long czasOdUruchomienia = millis();
   Serial.begin(115200);
   pinMode(PIN_LEFT_MOTOR_SPEED, OUTPUT);
   analogWrite(PIN_LEFT_MOTOR_SPEED, 0);
@@ -40,19 +53,13 @@ void setup() {
   pinMode(PIN_RIGHT_MOTOR_FORWARD, OUTPUT);
   pinMode(PIN_RIGHT_MOTOR_REVERSE, OUTPUT);
 
-  Serial.println("Kalibruje TRSensors");
-  for (int i = 0; i < 400; i++) 
-    trs.calibrate();
-  Serial.println("Kalibracja zakonczona");
+  Kalibracja();
 
   // Ustaw kierunki silników – PRAWDZIWY ruch do przodu
   digitalWrite(PIN_LEFT_MOTOR_FORWARD, LOW);
   digitalWrite(PIN_LEFT_MOTOR_REVERSE, HIGH);
   digitalWrite(PIN_RIGHT_MOTOR_FORWARD, HIGH);  // <- odwrócone dla prawego silnika
   digitalWrite(PIN_RIGHT_MOTOR_REVERSE, LOW);
-  // Uruchom silniki na start
-  // analogWrite(LEFT_MOTOR_PWM, SPEED);
-  // analogWrite(RIGHT_MOTOR_PWM, SPEED);
 }
 
 void Move(int leftPWM, int rightPWM) {
@@ -68,12 +75,7 @@ void updatePID() {
   // PID
   integral += proportional * updateTime;
   integral = constrain(integral, -2000,2000);
-  // if (integral > 10000) 
-  //   integral = 10000;
-  // if (integral < -10000) integral = -10000;
   derivative = (proportional - lastError) / updateTime;
-  // filtr dolnoprzepustowy D
-  // D_filter = D_alpha * derivative + (1 - D_alpha) * D_filter;
   int u = (int)(Kp * proportional + Ki * integral + Kd * derivative);
   int leftPWM = SPEED - u;
   int rightPWM = SPEED + u;
@@ -87,41 +89,82 @@ void updatePID() {
 }
 
 void processSerial() {
-  while (Serial.available()) {
-    char c = Serial.read();
-    if (c == '\n' || c == '\r') {
-      cmdBuf[cmdIndex] = 0; // zakończenie stringa
-      if (cmdIndex > 0) {
-        handleCommand(cmdBuf);
-      }
-      cmdIndex = 0;
-    } else if (cmdIndex < CMD_BUF_SIZE - 1) {
-      cmdBuf[cmdIndex++] = c;
+  //odebranie danych z portu
+  if(Serial.available() > 0){
+    //sciagniecie z buffera
+    String cmd = Serial.readStringUntil("\n");
+    Serial.print("ACK | ");
+
+    if(cmd.startsWith("START")){
+      Serial.print("rozpoczynam jazde");
     }
+    else{
+      cmd += Odbior_komendy();
+    }
+
+    Serial.print("Odebrano: ");
+    Serial.println(cmd);
   }
+  // while (Serial.available()) {
+  //   char c = Serial.read();
+  //   if (c == '\n' || c == '\r') {
+  //     cmdBuf[cmdIndex] = 0; // zakończenie stringa
+  //     if (cmdIndex > 0) {
+  //       handleCommand(cmdBuf);
+  //     }
+  //     cmdIndex = 0;
+  //   } else if (cmdIndex < CMD_BUF_SIZE - 1) {
+  //     cmdBuf[cmdIndex++] = c;
+  //   }
+  // }
 }
 
-void handleCommand(char* cmd) {
-  if (cmd[0] == 'P') { // start PID
-    Serial.println("ACK | PID włączony");
-  } else if (strncmp(cmd, "KP", 2) == 0) {
-    Kp = atof(cmd + 3);
-    Serial.print("ACK | Kp ustawione: "); Serial.println(Kp);
-  } else if (strncmp(cmd, "KI", 2) == 0) {
-    Ki = atof(cmd + 3);
-    Serial.print("ACK | Ki ustawione: "); Serial.println(Ki);
-  } else if (strncmp(cmd, "KD", 2) == 0) {
-    Kd = atof(cmd + 3);
-    Serial.print("ACK | Kd ustawione: "); Serial.println(Kd);
-  } else {
-    Serial.println("Nieznana komenda");
-  }
+// void handleCommand(char* cmd) {
+//   if (cmd[0] == 'P') { // start PID
+//     Serial.println("ACK | PID włączony");
+//   } else if (strncmp(cmd, "KP", 2) == 0) {
+//     Kp = atof(cmd + 3);
+//     Serial.print("ACK | Kp ustawione: "); Serial.println(Kp);
+//   } else if (strncmp(cmd, "KI", 2) == 0) {
+//     Ki = atof(cmd + 3);
+//     Serial.print("ACK | Ki ustawione: "); Serial.println(Ki);
+//   } else if (strncmp(cmd, "KD", 2) == 0) {
+//     Kd = atof(cmd + 3);
+//     Serial.print("ACK | Kd ustawione: "); Serial.println(Kd);
+//   } else {
+//     Serial.println("Nieznana komenda");
+//   }
+// }
+String Odbior_komendy(){
+  String cmd = "testing testing";
+
+  
+
+  return cmd;
 }
+
 void loop() {
   unsigned long t = millis();
-  if (t - lastPID >= updateTime) {
-    updatePID();
-    lastPID = t;
+  //nie usuwac -> jelsi nie bylo akcji przez 5 sekund (czyli np po resecie) alphabot ma zaczac jechac sam, jelis to nie bylo jeszce wypisane i zroione to robi kalibracje
+  // if((!czyBylaAkcja && czasOdUruchomienia>=5000) && !czyLoopWypisalJednorazowo){
+  //   czyJechac = true;
+  //   Serial.println("Nie zarejestrowano akcji od 5 sekund, rozpoczynam kalibracje");
+  //   if(!czyBylaKalibracja){
+  //     Kalibracja();
+  //     czyBylaKalibracja = true;
+  //   }
+  //   Kalibracja();
+  //   czyLoopWypisalJednorazowo = true;
+  // }
+  if(czyJechac){
+    if(!czyBylaKalibracja){
+      Kalibracja();
+      czyBylaKalibracja = true;
+    }
+    if (t - lastPID >= updateTime) {
+      updatePID();
+      lastPID = t;
+    }
   }
   processSerial(); // obsluga nieblokujaca seriala
 }

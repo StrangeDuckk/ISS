@@ -123,6 +123,9 @@ def ACK_od_Arduino():
 def HelpWypisywanie():
     print("-------------------------Help-------------------------------\n"
           "todo\n"
+          "S -> predkosc \n"
+          "sl -> silnik lewy\n"
+          "sp -> silnik prawyn\n"
           )#todo help
 
 def PisanieRamki():
@@ -131,7 +134,7 @@ def PisanieRamki():
     TRYB_JAZDY = False
 
     print("-------- URUCHOMIONO PISANIE RAMKI ---------")
-    print(f"RAM | komendy:P, KP, KI, KD | format: \"KP 1.0\"")
+    print(f"RAM | komendy: S, T, KP, KI, KD, SP, SL | format: \"KP 1.0\" lub \"SL 1\" (Q -> zakoncz pisanie)")
 
     #todo do zmiany w locie piny na przod tyl
 
@@ -142,7 +145,7 @@ def PisanieRamki():
             print("RAM | zakonczono prodecure pisania ramki")
             break
 
-        elif any(cmd.startswith(command) for command in ["KP", "KI", "KD", "P"]):
+        elif any(cmd.startswith(command) for command in ["KP", "KI", "KD", "T", "S", "SL", "SP"]):
             # KI 3.2
             chars = cmd.split()
             if len(chars) == 2 and chars[1].replace('.', '', 1).isdigit():
@@ -151,13 +154,23 @@ def PisanieRamki():
                 cmdToSend = f"{c} {v},"
                 cmdDoWyslania += cmdToSend
             else:
-                print(f"RAM | Niepoprawna komenda, komendy: KP, KI, KD, P | format: \"KP 1.0\"")
+                print(f"RAM | Niepoprawna komenda, komendy: S, T, KP, KI, KD, SP, SL | format: \"KP 1.0\" lub \"SL 1\"")
 
         else:
-            print(f"RAM | komendy: KP, KI, KD, P | format: \"KP 1.0\"")
+            print(f"RAM | komendy: S, T, KP, KI, KD, SP, SL | format: \"KP 1.0\" lub \"SL 1\"")
     cmdDoWyslania+="\n"
     arduino.write(cmdDoWyslania.encode())
-    print(f"TEST | OUT: {cmdDoWyslania.replace('\n', '\\n}')}")
+    print(f"RAM | OUT: {cmdDoWyslania.replace('\n', '\\n}')}")
+
+    ACK_od_Arduino()
+
+    return "k"
+
+def UruchomTrybJazdy():
+    global TRYB_JAZDY
+    TRYB_JAZDY = True
+
+    arduino.write("START".encode())
 
     ACK_od_Arduino()
 
@@ -167,12 +180,12 @@ def InputUzytkownika():
     # wysyłanie danych do Arduino    Podaj predkosc (0-255) do Arduino
     global TRYB_JAZDY
     cmd = ""
-    while cmd not in ("q", "Q", "h", "H", "z", "Z", "r", "R"):
+    while cmd not in ("q", "Q", "h", "H", "p", "P", "r", "R"):
         cmd = input(
             "========================================\n"
             "Wpisz \n"
             "h lub p dla pomocy,\n"
-            "z dla trybu zaliczeniowego,\n"
+            "p dla startu (default, po resecie po 5 s rozpoczecie kalibracji),\n"
             "r dla zmiany wartosci \n"
             "q zeby zakonczyc:\n$")
 
@@ -181,15 +194,16 @@ def InputUzytkownika():
         return "q"
     elif cmd == "h" or cmd == "H":
         return HelpWypisywanie()
-    elif cmd == "z" or cmd == "Z" or cmd == "start":
+    elif cmd == "p" or cmd == "P":
         TRYB_JAZDY = True
-        return ACK_od_Arduino()
+        return UruchomTrybJazdy()
     elif cmd == "r" or cmd == "R":
         return PisanieRamki()
 
 
 # --------- petla main ----------
 def main():
+
     global TRYB_JAZDY
     try:
         while True:

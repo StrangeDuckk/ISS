@@ -1,105 +1,35 @@
 #include "TRSensors.h"
-
-// ------------------------ parametry do zmian w ramce ----------------------
-#define PIN_LEFT_MOTOR_SPEED 5
-int PIN_LEFT_MOTOR_FORWARD = A1; //default A0
-int PIN_LEFT_MOTOR_REVERSE = A0; //default A1
-#define PIN_LEFT_ENCODER 2
-   
-#define PIN_RIGHT_MOTOR_SPEED 6
-int PIN_RIGHT_MOTOR_FORWARD = A3; //default A2           
-int PIN_RIGHT_MOTOR_REVERSE = A2; //default A3
-#define PIN_RIGHT_ENCODER 3
-
-float Kp = 0.0; //wzmocnienie proporcjonalne
-float Ki = 0.0; //wzmocnienie calkujaca
-float Kd = 0.0; //wzmocnienie rozniczkujace
-int t = 100;    //czas reakcji zakres 50-300
-int czasProbkowaniaPID = 5; //5 sekund na probkowanie
-// zmienne PID
-float derivative = 0.0;
-float previousError = 0.0;
-float error = 0.0;
-float output = 0.0;
-// FLAGI
-bool TRYB_JAZDY = false;
-bool TRYB_KALIBRACYJNY = false;
-float Vref = 150.0; //base speed
-
-// ---------------------------------- stale ----------------------------------
 #define NUM_SENSORS 5
+#define PIN_LEFT_MOTOR_SPEED 5
+#define PIN_LEFT_MOTOR_FORWARD A0
+#define PIN_LEFT_MOTOR_REVERSE A1
+#define PIN_RIGHT_MOTOR_SPEED 6
+#define PIN_RIGHT_MOTOR_FORWARD  A2
+#define PIN_RIGHT_MOTOR_REVERSE A3
 TRSensors trs =   TRSensors();
 unsigned int sensorValues[NUM_SENSORS];
-unsigned int last_proportional = 0;
+
+
+// PID
+float Kp = 0.06;
+float Ki = 0.0;
+float Kd = 2.8;
 long integral = 0;
-unsigned long myTime;
-
-int left_encoder_count=0;
-int right_encoder_count=0;
-
-float PWM_L = 0.0;
-float PWM_R = 0.0;
-
-
-void left_encoder(){
-  left_encoder_count++;  
-}
-
-void right_encoder(){
-  right_encoder_count++;  
-}
-
-// ------------------------ Funkcje ------------------------
-void PID(){
-  unsigned int position = trs.readLine(sensorValues);
-  int proportional = (int)position - 2000;
-  integral = integral+proportional*0.1;
-  derivative=(proportional-previousError)/0.1;
-  float output=Kp*proportional+Ki*integral+Kd*derivative;
-
-  Serial.print("Kp: ");
-  Serial.print(Kp);
-  Serial.print(", Ki: ");
-  Serial.print(Ki);
-  Serial.print(", Kd: ");
-  Serial.print(Kd);
-  Serial.print(", Vref: ");
-  Serial.print(Vref);
-  Serial.print(", t: ");
-  Serial.println(t);
-  previousError=proportional;
-  
-  PWM_L = Vref - output;
-  PWM_R - Vref + output;
-}
+int lastError = 0;
+float derivative = 0;
+// float D_filter = 0;
+// float D_alpha = 0.2; // filtr dolnoprzepustowy D
+int SPEED = 75;
+int updateTime = 10; // ms
+unsigned long lastPID = 0;
 
 
-// -----------------------------------------------------------------
-void setup(){
+// Serial command buffer
+#define CMD_BUF_SIZE 32
+char cmdBuf[CMD_BUF_SIZE];
+uint8_t cmdIndex = 0;
+void setup() {
   Serial.begin(115200);
-  Serial.println("TRSensor example");
-  
-  for (int i = 0; i < 400; i++){                  // make the calibration take about 10 seconds
-    trs.calibrate();                             // reads all sensors 10 times
-  }
-  Serial.println("calibrate done");
-  
-  // print the calibration minimum values measured when emitters were on
-  for (int i = 0; i < NUM_SENSORS; i++){
-    Serial.print(trs.calibratedMin[i]);
-    Serial.print(' ');
-  }
-  Serial.println();
-  
-  // print the calibration maximum values measured when emitters were on
-  for (int i = 0; i < NUM_SENSORS; i++){
-    Serial.print(trs.calibratedMax[i]);
-    Serial.print(' ');
-  }
-  Serial.println();
-  delay(1000);
-  myTime = millis();
-
   pinMode(PIN_LEFT_MOTOR_SPEED, OUTPUT);
   analogWrite(PIN_LEFT_MOTOR_SPEED, 0);
   pinMode(PIN_LEFT_MOTOR_FORWARD, OUTPUT);
@@ -109,51 +39,89 @@ void setup(){
   analogWrite(PIN_RIGHT_MOTOR_SPEED, 0);
   pinMode(PIN_RIGHT_MOTOR_FORWARD, OUTPUT);
   pinMode(PIN_RIGHT_MOTOR_REVERSE, OUTPUT);
-  
 
-  attachInterrupt(digitalPinToInterrupt(PIN_LEFT_ENCODER), left_encoder, RISING);
-  attachInterrupt(digitalPinToInterrupt(PIN_RIGHT_ENCODER), right_encoder, RISING);
+  Serial.println("Kalibruje TRSensors");
+  for (int i = 0; i < 400; i++) 
+    trs.calibrate();
+  Serial.println("Kalibracja zakonczona");
+
+  // Ustaw kierunki silników – PRAWDZIWY ruch do przodu
+  digitalWrite(PIN_LEFT_MOTOR_FORWARD, LOW);
+  digitalWrite(PIN_LEFT_MOTOR_REVERSE, HIGH);
+  digitalWrite(PIN_RIGHT_MOTOR_FORWARD, HIGH);  // <- odwrócone dla prawego silnika
+  digitalWrite(PIN_RIGHT_MOTOR_REVERSE, LOW);
+  // Uruchom silniki na start
+  // analogWrite(LEFT_MOTOR_PWM, SPEED);
+  // analogWrite(RIGHT_MOTOR_PWM, SPEED);
 }
 
+void Move(int leftPWM, int rightPWM) {
+  leftPWM = constrain(leftPWM, 0, 255);
+  rightPWM = constrain(rightPWM, 0, 255);
+  analogWrite(PIN_LEFT_MOTOR_SPEED, leftPWM);
+  analogWrite(PIN_RIGHT_MOTOR_SPEED, rightPWM);
+}
 
-void loop(){
-  if((millis() - myTime) >= 100){
-    unsigned int position = trs.readLine(sensorValues);
-    int proportional = (int)position - 2000;
-    myTime = millis();
+void updatePID() {
+  unsigned int pos = trs.readLine(sensorValues); // 0-4000
+  int proportional = (int)pos - 2000; // środek = 0
+  // PID
+  integral += proportional * updateTime;
+  integral = constrain(integral, -2000,2000);
+  // if (integral > 10000) 
+  //   integral = 10000;
+  // if (integral < -10000) integral = -10000;
+  derivative = (proportional - lastError) / updateTime;
+  // filtr dolnoprzepustowy D
+  // D_filter = D_alpha * derivative + (1 - D_alpha) * D_filter;
+  int u = (int)(Kp * proportional + Ki * integral + Kd * derivative);
+  int leftPWM = SPEED - u;
+  int rightPWM = SPEED + u;
+  Move(leftPWM, rightPWM);
+  lastError = proportional;
+  // Debug
+  Serial.print("Proportional: "); Serial.print(proportional);
+  Serial.print(" | u: "); Serial.print(u);
+  Serial.print(" | PWM_L: "); Serial.print(leftPWM);
+  Serial.print(" PWM_R: "); Serial.println(rightPWM);
+}
 
-    Serial.print(proportional);
-    Serial.print(" | ");
-    Serial.print(left_encoder_count);
-    Serial.print(" : ");
-    Serial.println(right_encoder_count);
-
-    left_encoder_count=0;
-    right_encoder_count=0;
-    if(proportional < -100){
-      digitalWrite(PIN_LEFT_MOTOR_FORWARD, HIGH);
-      digitalWrite(PIN_LEFT_MOTOR_REVERSE, LOW);
-      analogWrite(PIN_LEFT_MOTOR_SPEED, 100);
-
-      digitalWrite(PIN_RIGHT_MOTOR_FORWARD, LOW);
-      digitalWrite(PIN_RIGHT_MOTOR_REVERSE, HIGH);
-      analogWrite(PIN_RIGHT_MOTOR_SPEED, 70);
-    }else if(proportional > 100){
-      digitalWrite(PIN_LEFT_MOTOR_FORWARD, HIGH);
-      digitalWrite(PIN_LEFT_MOTOR_REVERSE, LOW);
-      analogWrite(PIN_LEFT_MOTOR_SPEED, 70);
-
-      digitalWrite(PIN_RIGHT_MOTOR_FORWARD, LOW);
-      digitalWrite(PIN_RIGHT_MOTOR_REVERSE, HIGH);
-      analogWrite(PIN_RIGHT_MOTOR_SPEED, 100);
-    }else{
-      digitalWrite(PIN_LEFT_MOTOR_FORWARD, HIGH);
-      digitalWrite(PIN_LEFT_MOTOR_REVERSE, LOW);
-      analogWrite(PIN_LEFT_MOTOR_SPEED, 90);
-
-      digitalWrite(PIN_RIGHT_MOTOR_FORWARD, LOW);
-      digitalWrite(PIN_RIGHT_MOTOR_REVERSE, HIGH);
-      analogWrite(PIN_RIGHT_MOTOR_SPEED, 90);
+void processSerial() {
+  while (Serial.available()) {
+    char c = Serial.read();
+    if (c == '\n' || c == '\r') {
+      cmdBuf[cmdIndex] = 0; // zakończenie stringa
+      if (cmdIndex > 0) {
+        handleCommand(cmdBuf);
+      }
+      cmdIndex = 0;
+    } else if (cmdIndex < CMD_BUF_SIZE - 1) {
+      cmdBuf[cmdIndex++] = c;
     }
   }
+}
+
+void handleCommand(char* cmd) {
+  if (cmd[0] == 'P') { // start PID
+    Serial.println("ACK | PID włączony");
+  } else if (strncmp(cmd, "KP", 2) == 0) {
+    Kp = atof(cmd + 3);
+    Serial.print("ACK | Kp ustawione: "); Serial.println(Kp);
+  } else if (strncmp(cmd, "KI", 2) == 0) {
+    Ki = atof(cmd + 3);
+    Serial.print("ACK | Ki ustawione: "); Serial.println(Ki);
+  } else if (strncmp(cmd, "KD", 2) == 0) {
+    Kd = atof(cmd + 3);
+    Serial.print("ACK | Kd ustawione: "); Serial.println(Kd);
+  } else {
+    Serial.println("Nieznana komenda");
+  }
+}
+void loop() {
+  unsigned long t = millis();
+  if (t - lastPID >= updateTime) {
+    updatePID();
+    lastPID = t;
+  }
+  processSerial(); // obsluga nieblokujaca seriala
 }

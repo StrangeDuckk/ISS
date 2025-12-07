@@ -90,9 +90,6 @@ def SumaKontrolna(ramka):
             suma += int(digit)
     return str(suma%256)
 
-def TrybJazdyStart():
-    pass
-
 # --------- funkcja ACK ---------
 def ACK_od_Arduino():
     global TRYB_JAZDY
@@ -105,14 +102,15 @@ def ACK_od_Arduino():
             response = arduino.readline().decode().strip()
             if response:
                 print(f"IN| Arduino: {response}")
-                if response == "ACK":
+                if response.__contains__("ACK"):
                     ack_received = True
                     break
         time.sleep(0.05)
 
     if ack_received:
         if TRYB_JAZDY:
-            TrybJazdyStart()
+            print("Uruchomiono tryb jazdy")
+            TRYB_JAZDY = False
         else:
             if arduino.in_waiting > 0:
                 response = arduino.readline().decode().strip()
@@ -133,18 +131,18 @@ def PisanieRamki():
     TRYB_JAZDY = False
 
     print("-------- URUCHOMIONO PISANIE RAMKI ---------")
-    print(f"RAM | komendy: KP, KI, KD, DIST, ZERO, T. format: \"KP 1.0\"")
+    print(f"RAM | komendy:P, KP, KI, KD | format: \"KP 1.0\"")
 
     #todo do zmiany w locie piny na przod tyl
 
-    cmdDoWyslania = "{RAM, "
+    cmdDoWyslania = ""
     while True:
         cmd = input("> ").strip().upper()
         if cmd == "Q":
             print("RAM | zakonczono prodecure pisania ramki")
             break
 
-        elif any(cmd.startswith(command) for command in ["KP", "KI", "KD", "DIST", "ZERO", "T"]):
+        elif any(cmd.startswith(command) for command in ["KP", "KI", "KD", "P"]):
             # KI 3.2
             chars = cmd.split()
             if len(chars) == 2 and chars[1].replace('.', '', 1).isdigit():
@@ -153,10 +151,10 @@ def PisanieRamki():
                 cmdToSend = f"{c} {v},"
                 cmdDoWyslania += cmdToSend
             else:
-                print(f"RAM | Niepoprawna komenda, komendy: KP, KI, KD, DIST, ZERO, T. format: \"KP 1.0\"")
+                print(f"RAM | Niepoprawna komenda, komendy: KP, KI, KD, P | format: \"KP 1.0\"")
 
         else:
-            print(f"RAM | komendy: KP, KI, KD, DIST, ZERO, T. format: \"KP 1.0\"")
+            print(f"RAM | komendy: KP, KI, KD, P | format: \"KP 1.0\"")
     cmdDoWyslania+="\n"
     arduino.write(cmdDoWyslania.encode())
     print(f"TEST | OUT: {cmdDoWyslania.replace('\n', '\\n}')}")

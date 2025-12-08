@@ -137,21 +137,21 @@ def OdbiorInformacjiOdArduino(komenda):#do debugowania
 
 def HelpWypisywanie():
     print("-------------------------Help-------------------------------\n"
-          "todo\n"
-          "S -> predkosc \n"
-          "sl -> silnik lewy\n"
-          "sp -> silnik prawyn\n"
-          )#todo help
+          "S -> predkosc | S 100\n"
+          "T -> czas odswierzania | T 10\n"
+          "KP -> KP 1.0\n"
+          "KI -> KI 0.01\n"
+          "KD -> KD 2.0\n"
+          "SP -> zmiana kierunku silnika prawego | SP 1\n"
+          "SL -> zmiana kierunku silnika lewego | SL 1\n"
+          )
 
 def PisanieRamki():
-    #todo napisac od nowa, taka jak w zadaniu P1
     global TRYB_JAZDY
     TRYB_JAZDY = False
 
     print("-------- URUCHOMIONO PISANIE RAMKI ---------")
     print(f"RAM | komendy: S, T, KP, KI, KD, SP, SL | format: \"KP 1.0\" lub \"SL 1\" (Q -> zakoncz pisanie)")
-
-    #todo do zmiany w locie piny na przod tyl
 
     cmdDoWyslania = ""
     while True:
@@ -236,8 +236,10 @@ def InputUzytkownika():
 
 # --------- petla main ----------
 def main():
-
     global TRYB_JAZDY
+
+    #todo wgrac ostatnie ustawienia z arduino do arduino, zapisac je na pliku i wgrywac po kazdym resecie plytki
+
     try:
         while True:
             cmd = InputUzytkownika()

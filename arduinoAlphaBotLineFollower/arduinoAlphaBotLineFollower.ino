@@ -1,11 +1,11 @@
 #include "TRSensors.h"
 #define NUM_SENSORS 5
 #define PIN_LEFT_MOTOR_SPEED 5
-#define PIN_LEFT_MOTOR_FORWARD A0
-#define PIN_LEFT_MOTOR_REVERSE A1
+int PIN_LEFT_MOTOR_FORWARD = A0;
+int PIN_LEFT_MOTOR_REVERSE = A1;
 #define PIN_RIGHT_MOTOR_SPEED 6
-#define PIN_RIGHT_MOTOR_FORWARD  A2
-#define PIN_RIGHT_MOTOR_REVERSE A3
+int PIN_RIGHT_MOTOR_FORWARD = A2;
+int PIN_RIGHT_MOTOR_REVERSE = A3;
 TRSensors trs =   TRSensors();
 unsigned int sensorValues[NUM_SENSORS];
 
@@ -132,48 +132,80 @@ void processSerial() {
       Stop();
     }
     else{
-      cmd += Odbior_komendy();
-    }
+      // rozbicie po przecinkach
+      String output = "";
+      int start = 0;
+      while (true){
+        int przecinek = cmd.indexOf(",", start);
+        if(przecinek == -1)
+          break;
 
-    Serial.print("| Odebrano: ");
-    Serial.println(cmd);
+        String sub = cmd.substring(start, przecinek);
+        sub.trim();
+        if(sub.length() > 0){
+          output+= Odbior_komendy(sub);
+        }
+        start = przecinek +1;
+      }
+
+      Serial.println(output);
+    }
   }
-  // while (Serial.available()) {
-  //   char c = Serial.read();
-  //   if (c == '\n' || c == '\r') {
-  //     cmdBuf[cmdIndex] = 0; // zakończenie stringa
-  //     if (cmdIndex > 0) {
-  //       handleCommand(cmdBuf);
-  //     }
-  //     cmdIndex = 0;
-  //   } else if (cmdIndex < CMD_BUF_SIZE - 1) {
-  //     cmdBuf[cmdIndex++] = c;
-  //   }
-  // }
 }
 
-// void handleCommand(char* cmd) {
-//   if (cmd[0] == 'P') { // start PID
-//     Serial.println("ACK | PID włączony");
-//   } else if (strncmp(cmd, "KP", 2) == 0) {
-//     Kp = atof(cmd + 3);
-//     Serial.print("ACK | Kp ustawione: "); Serial.println(Kp);
-//   } else if (strncmp(cmd, "KI", 2) == 0) {
-//     Ki = atof(cmd + 3);
-//     Serial.print("ACK | Ki ustawione: "); Serial.println(Ki);
-//   } else if (strncmp(cmd, "KD", 2) == 0) {
-//     Kd = atof(cmd + 3);
-//     Serial.print("ACK | Kd ustawione: "); Serial.println(Kd);
-//   } else {
-//     Serial.println("Nieznana komenda");
-//   }
-// }
-String Odbior_komendy(){
-  String cmd = "testing testing";
+String Odbior_komendy(String cmd){
+  String temp = "";
+  cmd.trim();
 
-  
+  if(cmd.startsWith("KP ")){
+    Kp = cmd.substring(3).toFloat();
+    temp += "Ustawiono kp = ";
+    temp += String(Kp);
+    temp += " | ";
+  }
+  else if(cmd.startsWith("KI ")){
+    Ki = cmd.substring(3).toFloat();
+    temp += "Ustawiono ki = ";
+    temp += String(Ki);
+    temp += " | ";
+  }
+  else if(cmd.startsWith("KD ")){
+    Kd = cmd.substring(3).toFloat();
+    temp += "Ustawiono kd = ";
+    temp += String(Kd);
+    temp += " | ";
+  }
+  else if(cmd.startsWith("S ")){
+    SPEED = cmd.substring(2).toFloat();
+    temp += "Ustawiono SPEED = ";
+    temp += String(SPEED);
+    temp += " | ";
+  }
+  else if(cmd.startsWith("T ")){
+    updateTime = cmd.substring(2).toFloat();
+    temp += "Ustawiono updateTime = ";
+    temp += String(updateTime);
+    temp += " | ";
+  }
+  else if(cmd.startsWith("SP ")){
+    int stare = PIN_LEFT_MOTOR_FORWARD;
+    PIN_LEFT_MOTOR_FORWARD = PIN_LEFT_MOTOR_REVERSE;
+    PIN_LEFT_MOTOR_REVERSE = stare;
+    temp += "Odwrocono kierunek silnika prawego | ";
+  }
+  else if(cmd.startsWith("SL ")){
+    int stare = PIN_RIGHT_MOTOR_FORWARD;
+    PIN_RIGHT_MOTOR_FORWARD = PIN_RIGHT_MOTOR_REVERSE;
+    PIN_RIGHT_MOTOR_REVERSE = stare;
+    temp += "Odwrocono kierunek silnika lewego | ";
+  }
+  else{
+    temp += "Nieobslugiwana komenda: ";
+    temp += cmd;
+    temp += " | ";
+  }
 
-  return cmd;
+  return temp;
 }
 
 void loop() {

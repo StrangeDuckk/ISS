@@ -14,6 +14,10 @@ def WykrywaniePortu():
     porty = serial.tools.list_ports.comports()
 
     for port in porty:
+        # Bluetooth:
+        if "Bluetooth" in port.description:
+            return port.device
+
         if "Arduino" in port.description:
             print("Arduino jest na porcie: ",port.device)
             return port.device
@@ -90,7 +94,7 @@ def SumaKontrolna(ramka):
             suma += int(digit)
     return str(suma%256)
 
-# --------- funkcja ACK ---------
+# --------- funkcja ACK i informacje od Arduino ---------
 def ACK_od_Arduino():
     global TRYB_JAZDY
 
@@ -134,7 +138,33 @@ def OdbiorInformacjiOdArduino(komenda):#do debugowania
                     break
         time.sleep(0.0001)
 
+#--------------- funkcje -------------
+def UruchomTrybJazdy():
+    global TRYB_JAZDY
+    TRYB_JAZDY = True
 
+    print("OUT| START")
+    arduino.write("START\n".encode())
+    arduino.flush()
+
+    ACK_od_Arduino()
+
+    return "k"
+
+def ZatrzymajPojazd():
+    global TRYB_JAZDY
+    TRYB_JAZDY = False
+
+    print("OUT| END")
+    arduino.write("END\n".encode())
+    arduino.flush()
+
+    ACK_od_Arduino()
+
+    return "k"
+
+
+# -------------- Komunikacja z uzytkownikiem --------------
 def HelpWypisywanie():
     print("-------------------------Help-------------------------------\n"
           "S -> predkosc | S 100\n"
@@ -181,29 +211,6 @@ def PisanieRamki():
 
     return "k"
 
-def UruchomTrybJazdy():
-    global TRYB_JAZDY
-    TRYB_JAZDY = True
-
-    print("OUT| START")
-    arduino.write("START\n".encode())
-    arduino.flush()
-
-    ACK_od_Arduino()
-
-    return "k"
-
-def ZatrzymajPojazd():
-    global TRYB_JAZDY
-    TRYB_JAZDY = False
-
-    print("OUT| END")
-    arduino.write("END\n".encode())
-    arduino.flush()
-
-    ACK_od_Arduino()
-
-    return "k"
 
 def InputUzytkownika():
     # wysyłanie danych do Arduino    Podaj predkosc (0-255) do Arduino

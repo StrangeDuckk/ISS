@@ -1,3 +1,5 @@
+#include <SoftwareSerial.h>
+
 #include "TRSensors.h"
 #define NUM_SENSORS 5
 #define PIN_LEFT_MOTOR_SPEED 5
@@ -9,6 +11,12 @@ int PIN_RIGHT_MOTOR_REVERSE = A3;
 TRSensors trs =   TRSensors();
 unsigned int sensorValues[NUM_SENSORS];
 
+//bluetooth:
+SoftwareSerial BT(10,11);//RX, TX
+
+// filtr dolnoprzepustowy
+float D_filter = 0;
+float D_alpha = 0.2; 
 
 // PID
 float Kp = 0.06;
@@ -18,7 +26,7 @@ long integral = 0;
 int lastError = 0;
 float derivative = 0;
 int SPEED = 75;
-int updateTime = 10; // ms
+int updateTime = 50; // ms 50-300   10
 unsigned long lastPID = 0;
 
 bool czyJechac = false;
@@ -43,6 +51,9 @@ void Kalibracja(){
 void setup() {
   // unsigned long czasOdUruchomienia = millis();
   Serial.begin(115200);
+
+  // bluetooth:
+  BT.begin(115200);
 
   Serial.println("Arduino gotowe!");
 
@@ -101,7 +112,12 @@ void updatePID() {
   integral += proportional * updateTime;
   integral = constrain(integral, -2000,2000);
   derivative = (proportional - lastError) / updateTime;
-  int u = (int)(Kp * proportional + Ki * integral + Kd * derivative);
+
+  float D_alpha = 0.7;
+  float D_filter = D_alpha * derivative + (1 - D_alpha) * D_filter;
+  int u = (int)(Kp * lastError + Ki * integral + Kd * D_filter);
+
+  // int u = (int)(Kp * proportional + Ki * integral + Kd * derivative); //to dziala
   int leftPWM = SPEED - u;
   int rightPWM = SPEED + u;
   Move(leftPWM, rightPWM);
@@ -149,6 +165,45 @@ void processSerial() {
       }
 
       Serial.println(output);
+    }
+  }
+}
+
+void processBluetooth(){
+  if(BT.available() > 0){
+    //sciagniecie z buffera
+    String cmd = BT.readStringUntil("\n");
+    BT.print("ACK | ");
+
+    if(cmd.startsWith("START")){
+      BT.print("rozpoczynam jazde");
+
+      czasOdUruchomienia = millis();
+      czyJechac = true;
+      czyBylaKalibracja = false;
+    }
+    else if (cmd.startsWith("END")){
+      BT.println("Koncze jazde");
+      Stop();
+    }
+    else{
+      // rozbicie po przecinkach
+      String output = "";
+      int start = 0;
+      while (true){
+        int przecinek = cmd.indexOf(",", start);
+        if(przecinek == -1)
+          break;
+
+        String sub = cmd.substring(start, przecinek);
+        sub.trim();
+        if(sub.length() > 0){
+          output+= Odbior_komendy(sub);
+        }
+        start = przecinek +1;
+      }
+
+      BT.println(output);
     }
   }
 }
@@ -210,19 +265,11 @@ String Odbior_komendy(String cmd){
 
 void loop() {
   processSerial(); // obsluga nieblokujaca seriala
+  //Bluetooth:
+  processBluetooth();
+
   unsigned long t = millis();
   // plan: po P, odczekac 10 s i rozpoczac kalibracje
-  //nie usuwac -> jelsi nie bylo akcji przez 5 sekund (czyli np po resecie) alphabot ma zaczac jechac sam, jelis to nie bylo jeszce wypisane i zroione to robi kalibracje
-  // if((!czyBylaAkcja && czasOdUruchomienia>=5000) && !czyLoopWypisalJednorazowo){
-  //   czyJechac = true;
-  //   Serial.println("Nie zarejestrowano akcji od 5 sekund, rozpoczynam kalibracje");
-  //   if(!czyBylaKalibracja){
-  //     Kalibracja();
-  //     czyBylaKalibracja = true;
-  //   }
-  //   Kalibracja();
-  //   czyLoopWypisalJednorazowo = true;
-  // }
   if(czyJechac){
     if(!czyBylaKalibracja && czasOdUruchomienia > 0){
       if( t - czasOdUruchomienia >=10000){

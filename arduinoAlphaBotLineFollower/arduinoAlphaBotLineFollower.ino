@@ -22,7 +22,7 @@ int updateTime = 10; // ms
 unsigned long lastPID = 0;
 
 bool czyJechac = false;
-unsigned long czasOdUruchomienia = millis();
+unsigned long czasOdUruchomienia = 0;
 bool czyBylaAkcja = false;
 bool czyLoopWypisalJednorazowo = false;
 bool czyBylaKalibracja = false;
@@ -41,8 +41,11 @@ void Kalibracja(){
 }
 
 void setup() {
-  unsigned long czasOdUruchomienia = millis();
+  // unsigned long czasOdUruchomienia = millis();
   Serial.begin(115200);
+
+  Serial.println("Arduino gotowe!");
+
   pinMode(PIN_LEFT_MOTOR_SPEED, OUTPUT);
   analogWrite(PIN_LEFT_MOTOR_SPEED, 0);
   pinMode(PIN_LEFT_MOTOR_FORWARD, OUTPUT);
@@ -53,7 +56,7 @@ void setup() {
   pinMode(PIN_RIGHT_MOTOR_FORWARD, OUTPUT);
   pinMode(PIN_RIGHT_MOTOR_REVERSE, OUTPUT);
 
-  Kalibracja();
+  // Kalibracja();
 
   // Ustaw kierunki silników – PRAWDZIWY ruch do przodu
   digitalWrite(PIN_LEFT_MOTOR_FORWARD, LOW);
@@ -67,6 +70,28 @@ void Move(int leftPWM, int rightPWM) {
   rightPWM = constrain(rightPWM, 0, 255);
   analogWrite(PIN_LEFT_MOTOR_SPEED, leftPWM);
   analogWrite(PIN_RIGHT_MOTOR_SPEED, rightPWM);
+}
+
+void Stop(){
+  analogWrite(PIN_LEFT_MOTOR_SPEED, 0);
+  analogWrite(PIN_RIGHT_MOTOR_SPEED, 0);
+
+  digitalWrite(PIN_LEFT_MOTOR_FORWARD, LOW);
+  digitalWrite(PIN_LEFT_MOTOR_REVERSE, LOW);
+  digitalWrite(PIN_RIGHT_MOTOR_FORWARD, LOW);
+  digitalWrite(PIN_RIGHT_MOTOR_REVERSE, LOW);
+
+  czyJechac = false;
+  czyBylaKalibracja = false;
+}
+
+void Start(){
+  //todo zmienic
+    // Ustaw kierunki silników – PRAWDZIWY ruch do przodu
+  digitalWrite(PIN_LEFT_MOTOR_FORWARD, LOW);
+  digitalWrite(PIN_LEFT_MOTOR_REVERSE, HIGH);
+  digitalWrite(PIN_RIGHT_MOTOR_FORWARD, HIGH);  // <- odwrócone dla prawego silnika
+  digitalWrite(PIN_RIGHT_MOTOR_REVERSE, LOW);
 }
 
 void updatePID() {
@@ -97,12 +122,20 @@ void processSerial() {
 
     if(cmd.startsWith("START")){
       Serial.print("rozpoczynam jazde");
+
+      czasOdUruchomienia = millis();
+      czyJechac = true;
+      czyBylaKalibracja = false;
+    }
+    else if (cmd.startsWith("END")){
+      Serial.println("Koncze jazde");
+      Stop();
     }
     else{
       cmd += Odbior_komendy();
     }
 
-    Serial.print("Odebrano: ");
+    Serial.print("| Odebrano: ");
     Serial.println(cmd);
   }
   // while (Serial.available()) {
@@ -144,7 +177,9 @@ String Odbior_komendy(){
 }
 
 void loop() {
+  processSerial(); // obsluga nieblokujaca seriala
   unsigned long t = millis();
+  // plan: po P, odczekac 10 s i rozpoczac kalibracje
   //nie usuwac -> jelsi nie bylo akcji przez 5 sekund (czyli np po resecie) alphabot ma zaczac jechac sam, jelis to nie bylo jeszce wypisane i zroione to robi kalibracje
   // if((!czyBylaAkcja && czasOdUruchomienia>=5000) && !czyLoopWypisalJednorazowo){
   //   czyJechac = true;
@@ -157,14 +192,19 @@ void loop() {
   //   czyLoopWypisalJednorazowo = true;
   // }
   if(czyJechac){
-    if(!czyBylaKalibracja){
-      Kalibracja();
-      czyBylaKalibracja = true;
+    if(!czyBylaKalibracja && czasOdUruchomienia > 0){
+      if( t - czasOdUruchomienia >=10000){
+        Kalibracja();
+        czyBylaKalibracja = true;
+        Start();
+      }
     }
-    if (t - lastPID >= updateTime) {
-      updatePID();
-      lastPID = t;
+    if(czyBylaKalibracja){
+      if (t - lastPID >= updateTime) {
+        updatePID();
+        lastPID = t;
+        Serial.println("JADE");//do debugowania
+      }
     }
   }
-  processSerial(); // obsluga nieblokujaca seriala
 }

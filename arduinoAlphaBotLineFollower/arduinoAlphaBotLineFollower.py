@@ -97,7 +97,7 @@ def ACK_od_Arduino():
     start_time = time.time()
     ack_received = False
 
-    while time.time() - start_time < 5:  # 5 sekund
+    while time.time() - start_time < 11:  # 5 sekund
         if arduino.in_waiting > 0:
             response = arduino.readline().decode().strip()
             if response:
@@ -105,12 +105,13 @@ def ACK_od_Arduino():
                 if response.__contains__("ACK"):
                     ack_received = True
                     break
-        time.sleep(0.05)
+        time.sleep(0.0001)
 
     if ack_received:
         if TRYB_JAZDY:
             print("Uruchomiono tryb jazdy")
             TRYB_JAZDY = False
+            OdbiorInformacjiOdArduino("JADE")
         else:
             if arduino.in_waiting > 0:
                 response = arduino.readline().decode().strip()
@@ -119,6 +120,20 @@ def ACK_od_Arduino():
 
     else:
         print("Brak odpowiedzi ACK od Arduino")
+
+
+def OdbiorInformacjiOdArduino(komenda):#do debugowania
+    start_time = time.time()
+
+    while time.time() - start_time < 30:  # 5 sekund
+        if arduino.in_waiting > 0:
+            response = arduino.readline().decode().strip()
+            if response:
+                print(f"IN| Arduino: {response}")
+                if response.__contains__(komenda):
+                    break
+        time.sleep(0.0001)
+
 
 def HelpWypisywanie():
     print("-------------------------Help-------------------------------\n"
@@ -170,7 +185,21 @@ def UruchomTrybJazdy():
     global TRYB_JAZDY
     TRYB_JAZDY = True
 
-    arduino.write("START".encode())
+    print("OUT| START")
+    arduino.write("START\n".encode())
+    arduino.flush()
+
+    ACK_od_Arduino()
+
+    return "k"
+
+def ZatrzymajPojazd():
+    global TRYB_JAZDY
+    TRYB_JAZDY = False
+
+    print("OUT| END")
+    arduino.write("END\n".encode())
+    arduino.flush()
 
     ACK_od_Arduino()
 
@@ -180,13 +209,14 @@ def InputUzytkownika():
     # wysyłanie danych do Arduino    Podaj predkosc (0-255) do Arduino
     global TRYB_JAZDY
     cmd = ""
-    while cmd not in ("q", "Q", "h", "H", "p", "P", "r", "R"):
+    while cmd not in ("q", "Q", "h", "H", "p", "P", "e", "E", "r", "R"):
         cmd = input(
             "========================================\n"
             "Wpisz \n"
             "h lub p dla pomocy,\n"
-            "p dla startu (default, po resecie po 5 s rozpoczecie kalibracji),\n"
-            "r dla zmiany wartosci \n"
+            "p dla startu (10 s delay i potem 5 sekund kalibracji),\n"
+            "e dla stopu,\n"
+            "r dla zmiany wartosci,\n"
             "q zeby zakonczyc:\n$")
 
     if cmd == "q" or cmd == "Q":
@@ -195,8 +225,11 @@ def InputUzytkownika():
     elif cmd == "h" or cmd == "H":
         return HelpWypisywanie()
     elif cmd == "p" or cmd == "P":
-        TRYB_JAZDY = True
+        TRYB_JAZDY = True#jak uzytkownik da P to po 10 sekundach uruchamia tryb kalibracji dopiero a nie ze po resecie plytki
         return UruchomTrybJazdy()
+    elif cmd == "e" or cmd == "E":
+        TRYB_JAZDY = False
+        return ZatrzymajPojazd()
     elif cmd == "r" or cmd == "R":
         return PisanieRamki()
 
